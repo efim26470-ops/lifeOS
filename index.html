@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="LifeOS">
-  <meta name="description" content="LifeOS — локальный PWA-трекер работы, привычек и времени.">
+  <meta name="description" content="LifeOS — локальный PWA-трекер работы, времени, целей и привычек.">
   <title>LifeOS</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
@@ -19,13 +19,14 @@
 <body>
   <div class="aurora aurora-a"></div>
   <div class="aurora aurora-b"></div>
+  <div class="aurora aurora-c"></div>
 
   <div class="app-shell">
     <header class="topbar glass-panel">
       <div class="brand">
         <div class="brand-mark" aria-hidden="true">L</div>
         <div>
-          <p class="eyebrow">PWA · локально · offline</p>
+          <p class="eyebrow">PWA · GitHub Pages · offline</p>
           <h1>LifeOS</h1>
         </div>
       </div>
@@ -36,6 +37,8 @@
           <option value="system">Системная</option>
           <option value="light">Светлая</option>
           <option value="dark">Тёмная</option>
+          <option value="midnight">Midnight</option>
+          <option value="aurora">Aurora</option>
         </select>
       </div>
     </header>
@@ -46,108 +49,131 @@
           <p class="eyebrow">Рабочий период</p>
           <h2>3 июля — 31 августа 2026</h2>
           <p class="hero-copy">Будни: 10:00–17:00 · Суббота: 10:00–14:00 · Воскресенье: выходной</p>
+          <div class="hero-inline" id="heroInline">Загрузка статуса...</div>
         </div>
         <div class="hero-metrics" aria-label="Краткая статистика">
-          <div class="metric-card">
-            <span id="heroPercent">0%</span>
-            <small>выполнение</small>
-          </div>
-          <div class="metric-card">
-            <span id="heroStreak">0</span>
-            <small>серия дней</small>
-          </div>
-          <div class="metric-card">
-            <span id="heroHours">0ч</span>
-            <small>работа</small>
-          </div>
+          <div class="metric-card"><span id="heroPercent">0%</span><small>выполнение</small></div>
+          <div class="metric-card"><span id="heroStreak">0</span><small>серия дней</small></div>
+          <div class="metric-card"><span id="heroHours">0ч</span><small>работа</small></div>
+          <div class="metric-card"><span id="heroBalance">0ч</span><small>остаток</small></div>
         </div>
       </section>
 
       <nav class="tabs glass-panel" aria-label="Разделы LifeOS">
-        <button class="tab active" data-tab="today">Сегодня</button>
+        <button class="tab active" data-tab="dashboard">Обзор</button>
+        <button class="tab" data-tab="today">День</button>
         <button class="tab" data-tab="calendar">Календарь</button>
-        <button class="tab" data-tab="log">Журнал</button>
+        <button class="tab" data-tab="timeline">Журнал</button>
+        <button class="tab" data-tab="goals">Цели</button>
         <button class="tab" data-tab="habits">Привычки</button>
-        <button class="tab" data-tab="stats">Статистика</button>
+        <button class="tab" data-tab="focus">Фокус</button>
+        <button class="tab" data-tab="achievements">Достижения</button>
+        <button class="tab" data-tab="analytics">Аналитика</button>
         <button class="tab" data-tab="settings">Настройки</button>
       </nav>
 
-      <section id="today" class="view active">
-        <div class="grid two-columns">
-          <article class="glass-panel card today-card">
-            <div class="section-head">
+      <section id="dashboard" class="view active">
+        <div class="grid dashboard-grid">
+          <article class="glass-panel card span-2">
+            <div class="section-head stacked-mobile">
               <div>
-                <p class="eyebrow">Текущий день</p>
-                <h3 id="todayTitle">Сегодня</h3>
+                <p class="eyebrow">Командный центр</p>
+                <h3 id="dashTitle">Сегодня</h3>
               </div>
               <input type="date" id="selectedDate" class="date-input" min="2026-07-03" max="2026-08-31">
             </div>
-
-            <div class="work-task" id="workTaskBox">
-              <div class="task-icon">⌚</div>
-              <div>
-                <h4 id="workTaskTitle">Работа</h4>
-                <p id="workTaskText">График загрузится автоматически.</p>
+            <div class="dashboard-status">
+              <div class="status-orb" id="statusOrb"><span id="statusPercent">0%</span></div>
+              <div class="status-copy">
+                <h4 id="statusTitle">Рабочий день</h4>
+                <p id="statusText">График загрузится автоматически.</p>
+                <div class="progress-wrap compact">
+                  <div class="progress-meta"><span>Прогресс выбранного дня</span><strong id="dayProgressText">0%</strong></div>
+                  <div class="progress-bar" aria-hidden="true"><span id="dayProgressBar"></span></div>
+                </div>
+                <div class="button-row">
+                  <button class="primary-btn" id="toggleWorkDoneBtn">Выполнено</button>
+                  <button class="ghost-btn" id="addWorkIntervalBtn">Записать рабочий интервал</button>
+                  <button class="ghost-btn" id="jumpToTodayBtn">Сегодня</button>
+                </div>
               </div>
-              <button class="primary-btn" id="toggleWorkDoneBtn">Выполнено</button>
             </div>
-
-            <div class="progress-wrap">
-              <div class="progress-meta">
-                <span>Прогресс дня</span>
-                <strong id="dayProgressText">0%</strong>
-              </div>
-              <div class="progress-bar" aria-hidden="true"><span id="dayProgressBar"></span></div>
-            </div>
-
-            <div class="mini-feed" id="todayEntries"></div>
           </article>
 
+          <article class="glass-panel card">
+            <div class="section-head">
+              <div><p class="eyebrow">Настроение</p><h3>Состояние дня</h3></div>
+            </div>
+            <div class="mood-row" id="moodRow" aria-label="Настроение дня"></div>
+            <label class="note-label">Заметка дня
+              <textarea id="dailyNote" rows="5" maxlength="600" placeholder="Коротко: что важно, что мешало, что нужно сделать завтра"></textarea>
+            </label>
+          </article>
+
+          <article class="glass-panel card">
+            <div class="section-head">
+              <div><p class="eyebrow">Быстрые действия</p><h3>Шаблоны записи</h3></div>
+            </div>
+            <div id="quickTemplates" class="quick-template-list"></div>
+          </article>
+
+          <article class="glass-panel card span-2">
+            <div class="section-head">
+              <div><p class="eyebrow">Сегодня в журнале</p><h3>Лента выбранного дня</h3></div>
+              <button class="ghost-btn" id="openDayTabBtn">Открыть день</button>
+            </div>
+            <div id="dashboardEntries" class="mini-feed"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="today" class="view">
+        <div class="grid two-columns">
           <article class="glass-panel card quick-log-card">
             <div class="section-head">
-              <div>
-                <p class="eyebrow">Быстрая запись</p>
-                <h3>Чем занимался</h3>
-              </div>
+              <div><p class="eyebrow">Быстрая запись</p><h3>Чем занимался</h3></div>
             </div>
             <form id="quickLogForm" class="log-form">
-              <label>
-                Дата
-                <input type="date" id="logDate" min="2026-07-03" max="2026-08-31" required>
-              </label>
+              <label>Дата<input type="date" id="logDate" min="2026-07-03" max="2026-08-31" required></label>
               <div class="form-row">
-                <label>
-                  Начало
-                  <input type="time" id="logStart" required>
-                </label>
-                <label>
-                  Конец
-                  <input type="time" id="logEnd" required>
-                </label>
+                <label>Начало<input type="time" id="logStart" required></label>
+                <label>Конец<input type="time" id="logEnd" required></label>
               </div>
-              <label>
-                Вариант времяпрепровождения
+              <label>Вариант времяпрепровождения
                 <select id="logType" required>
                   <option value="Работа">Работа</option>
                   <option value="Учёба">Учёба</option>
                   <option value="GitHub-проект">GitHub-проект</option>
+                  <option value="Фокус-сессия">Фокус-сессия</option>
                   <option value="Дорога">Дорога</option>
                   <option value="Обед">Обед</option>
                   <option value="Отдых">Отдых</option>
                   <option value="Спорт">Спорт</option>
+                  <option value="Домашние дела">Домашние дела</option>
                   <option value="Другое">Другое</option>
                 </select>
               </label>
-              <label id="customTypeLabel" class="hidden">
-                Свой вариант
-                <input type="text" id="customType" maxlength="50" placeholder="Например: звонки, документы, встреча">
+              <label id="customTypeLabel" class="hidden">Свой вариант
+                <input type="text" id="customType" maxlength="50" placeholder="Например: документы, звонки, встреча">
               </label>
-              <label>
-                Заметка
-                <textarea id="logNote" rows="3" maxlength="220" placeholder="Коротко: что именно сделал, почему был перерыв и т.д."></textarea>
+              <label>Заметка
+                <textarea id="logNote" rows="3" maxlength="260" placeholder="Что именно сделал, почему был перерыв, результат"></textarea>
               </label>
-              <button class="primary-btn wide" type="submit">Записать интервал</button>
+              <div class="button-row stretch">
+                <button class="primary-btn" type="submit">Записать интервал</button>
+                <button class="ghost-btn" id="clearLogFormBtn" type="button">Очистить</button>
+              </div>
             </form>
+          </article>
+
+          <article class="glass-panel card">
+            <div class="section-head">
+              <div><p class="eyebrow">План и контроль</p><h3 id="todayTitle">Выбранный день</h3></div>
+            </div>
+            <div id="datePlanBox" class="date-plan-box"></div>
+            <div class="divider"></div>
+            <h4 class="block-title">Записи дня</h4>
+            <div id="todayEntries" class="mini-feed"></div>
           </article>
         </div>
       </section>
@@ -155,10 +181,7 @@
       <section id="calendar" class="view">
         <article class="glass-panel card">
           <div class="section-head stacked-mobile">
-            <div>
-              <p class="eyebrow">Июль — август 2026</p>
-              <h3>Календарь работы</h3>
-            </div>
+            <div><p class="eyebrow">Июль — август 2026</p><h3>Календарь работы</h3></div>
             <div class="legend">
               <span><i class="dot done"></i> выполнено</span>
               <span><i class="dot partial"></i> частично</span>
@@ -166,133 +189,154 @@
               <span><i class="dot off"></i> выходной</span>
             </div>
           </div>
+          <div class="calendar-toolbar">
+            <button class="ghost-btn" id="showAllDaysBtn">Все дни</button>
+            <button class="ghost-btn" id="showOnlyMissedBtn">Только пустые</button>
+            <button class="ghost-btn" id="showOnlyWorkBtn">Рабочие</button>
+          </div>
           <div id="calendarGrid" class="calendar-grid"></div>
         </article>
       </section>
 
-      <section id="log" class="view">
+      <section id="timeline" class="view">
         <div class="grid two-columns">
-          <article class="glass-panel card">
-            <div class="section-head">
-              <div>
-                <p class="eyebrow">Все записи</p>
-                <h3>Журнал времени</h3>
-              </div>
-              <button class="ghost-btn" id="clearFiltersBtn">Сбросить</button>
+          <article class="glass-panel card span-2">
+            <div class="section-head stacked-mobile">
+              <div><p class="eyebrow">Все записи</p><h3>Журнал времени</h3></div>
+              <div class="button-row"><button class="ghost-btn" id="clearFiltersBtn">Сбросить</button><button class="ghost-btn" id="exportCsvBtn">CSV</button></div>
             </div>
-            <div class="filter-row">
+            <div class="filter-row extended">
               <input type="date" id="filterDate" min="2026-07-03" max="2026-08-31" aria-label="Фильтр по дате">
-              <select id="filterType" aria-label="Фильтр по типу">
-                <option value="all">Все типы</option>
-              </select>
+              <select id="filterType" aria-label="Фильтр по типу"><option value="all">Все типы</option></select>
+              <input type="search" id="filterSearch" maxlength="80" placeholder="Поиск по заметкам и типам">
             </div>
             <div id="logList" class="log-list"></div>
           </article>
+        </div>
+      </section>
 
+      <section id="goals" class="view">
+        <div class="grid two-columns">
           <article class="glass-panel card">
-            <div class="section-head">
-              <div>
-                <p class="eyebrow">Задачи периода</p>
-                <h3>План на дату</h3>
+            <div class="section-head"><div><p class="eyebrow">Большие задачи</p><h3>Цели</h3></div></div>
+            <form id="goalForm" class="goal-form">
+              <input id="goalTitle" maxlength="64" placeholder="Например: 40 часов GitHub-проектов" required>
+              <div class="form-row">
+                <input id="goalTarget" type="number" min="1" max="9999" step="1" placeholder="Цель" required>
+                <input id="goalUnit" maxlength="18" placeholder="единица: часов, дней, задач" required>
               </div>
-            </div>
-            <div id="datePlanBox" class="date-plan-box"></div>
+              <label>Дедлайн<input id="goalDeadline" type="date" min="2026-07-03" max="2026-12-31"></label>
+              <button class="primary-btn wide" type="submit">Добавить цель</button>
+            </form>
+          </article>
+          <article class="glass-panel card">
+            <div class="section-head"><div><p class="eyebrow">Прогресс</p><h3>Список целей</h3></div></div>
+            <div id="goalList" class="goal-list"></div>
           </article>
         </div>
       </section>
+
 
       <section id="habits" class="view">
         <div class="grid two-columns">
           <article class="glass-panel card">
-            <div class="section-head">
-              <div>
-                <p class="eyebrow">Ежедневные цели</p>
-                <h3>Привычки</h3>
-              </div>
-            </div>
+            <div class="section-head"><div><p class="eyebrow">Повседневные чек-листы</p><h3>Привычки</h3></div></div>
             <form id="habitForm" class="habit-form">
-              <input id="habitInput" type="text" maxlength="48" placeholder="Например: 20 минут сербского" required>
+              <input id="habitInput" type="text" maxlength="56" placeholder="Например: 20 минут сербского" required>
               <button class="primary-btn" type="submit">Добавить</button>
             </form>
             <div id="habitList" class="habit-list"></div>
           </article>
-
           <article class="glass-panel card">
-            <div class="section-head">
-              <div>
-                <p class="eyebrow">Профиль</p>
-                <h3>Уровень LifeOS</h3>
-              </div>
+            <div class="section-head"><div><p class="eyebrow">На выбранную дату</p><h3>Чек-лист дня</h3></div></div>
+            <div class="info-box subtle">
+              <p>Отмечай привычки по выбранной дате из верхнего блока. Каждая отметка даёт XP, попадает в аналитику и влияет на достижения.</p>
             </div>
-            <div class="level-card">
-              <div class="level-ring"><span id="levelValue">1</span></div>
-              <div>
-                <h4 id="levelTitle">Новичок системы</h4>
-                <p id="levelText">Выполняй работу, отмечай привычки и веди журнал, чтобы получать XP.</p>
-                <div class="progress-bar"><span id="xpBar"></span></div>
-                <small id="xpText">0 / 100 XP</small>
-              </div>
-            </div>
+            <div id="habitTodaySummary" class="date-plan-box"></div>
           </article>
         </div>
       </section>
 
-      <section id="stats" class="view">
+      <section id="focus" class="view">
+        <div class="grid two-columns">
+          <article class="glass-panel card focus-card">
+            <div class="section-head"><div><p class="eyebrow">Pomodoro</p><h3>Фокус-таймер</h3></div></div>
+            <div class="timer-ring"><span id="timerValue">25:00</span><small id="timerMode">Фокус</small></div>
+            <div class="timer-controls">
+              <button class="primary-btn" id="startTimerBtn">Старт</button>
+              <button class="ghost-btn" id="pauseTimerBtn">Пауза</button>
+              <button class="ghost-btn" id="resetTimerBtn">Сброс</button>
+            </div>
+            <div class="form-row timer-settings">
+              <label>Фокус, мин<input id="focusMinutes" type="number" min="5" max="120" step="5"></label>
+              <label>Перерыв, мин<input id="breakMinutes" type="number" min="1" max="60" step="1"></label>
+            </div>
+            <label>Название сессии<input id="focusLabel" maxlength="60" placeholder="Например: кодинг LifeOS"></label>
+          </article>
+          <article class="glass-panel card">
+            <div class="section-head"><div><p class="eyebrow">История</p><h3>Фокус-сессии</h3></div></div>
+            <div id="focusHistory" class="log-list compact-list"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="achievements" class="view">
+        <article class="glass-panel card">
+          <div class="section-head stacked-mobile">
+            <div><p class="eyebrow">Геймификация</p><h3>Достижения LifeOS</h3></div>
+            <div class="level-card compact-level">
+              <div class="level-ring"><span id="levelValue">1</span></div>
+              <div><strong id="levelTitle">Новичок системы</strong><small id="xpText">0 / 100 XP</small><div class="progress-bar"><span id="xpBar"></span></div></div>
+            </div>
+          </div>
+          <div id="achievementGrid" class="achievement-grid"></div>
+        </article>
+      </section>
+
+      <section id="analytics" class="view">
         <div class="stats-grid">
           <article class="glass-panel stat-card"><span id="statPlannedDays">0</span><small>рабочих дней</small></article>
           <article class="glass-panel stat-card"><span id="statPlannedHours">0ч</span><small>плановых часов</small></article>
           <article class="glass-panel stat-card"><span id="statLoggedWork">0ч</span><small>записано работы</small></article>
           <article class="glass-panel stat-card"><span id="statTotalLogged">0ч</span><small>всего в журнале</small></article>
+          <article class="glass-panel stat-card"><span id="statMissingHours">0ч</span><small>остаток работы</small></article>
+          <article class="glass-panel stat-card"><span id="statBestDay">—</span><small>лучший день</small></article>
         </div>
-
         <div class="grid two-columns stats-bottom">
-          <article class="glass-panel card">
-            <div class="section-head">
-              <div>
-                <p class="eyebrow">Категории</p>
-                <h3>Куда ушло время</h3>
-              </div>
-            </div>
-            <div id="categoryStats" class="category-stats"></div>
-          </article>
-          <article class="glass-panel card">
-            <div class="section-head">
-              <div>
-                <p class="eyebrow">Динамика</p>
-                <h3>Последние 14 дней</h3>
-              </div>
-            </div>
-            <div id="bars14" class="bars"></div>
-          </article>
+          <article class="glass-panel card"><div class="section-head"><div><p class="eyebrow">Категории</p><h3>Куда ушло время</h3></div></div><div id="categoryStats" class="category-stats"></div></article>
+          <article class="glass-panel card"><div class="section-head"><div><p class="eyebrow">Динамика</p><h3>Последние 14 дней</h3></div></div><div id="bars14" class="bars"></div></article>
         </div>
       </section>
 
       <section id="settings" class="view">
-        <article class="glass-panel card settings-card">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Данные не уходят на сервер</p>
-              <h3>Настройки и резервная копия</h3>
+        <div class="grid two-columns">
+          <article class="glass-panel card settings-card">
+            <div class="section-head"><div><p class="eyebrow">Данные не уходят на сервер</p><h3>Настройки и резервная копия</h3></div></div>
+            <label>Имя профиля<input id="profileName" maxlength="40" placeholder="Например: Ефим"></label>
+            <div class="settings-grid">
+              <button class="ghost-btn wide" id="requestNotifyBtn">Включить уведомления</button>
+              <button class="ghost-btn wide" id="exportBtn">Экспорт JSON</button>
+              <button class="ghost-btn wide" id="exportCsvBtn2">Экспорт CSV</button>
+              <label class="file-btn">Импорт JSON<input type="file" id="importInput" accept="application/json,.json"></label>
+              <button class="danger-btn wide" id="resetBtn">Сбросить данные</button>
             </div>
-          </div>
-          <div class="settings-grid">
-            <button class="ghost-btn wide" id="exportBtn">Экспорт JSON</button>
-            <label class="file-btn">
-              Импорт JSON
-              <input type="file" id="importInput" accept="application/json,.json">
-            </label>
-            <button class="danger-btn wide" id="resetBtn">Сбросить данные</button>
-          </div>
-          <div class="info-box">
-            <h4>Как опубликовать на GitHub Pages</h4>
-            <ol>
-              <li>Загрузи все файлы из архива в корень репозитория.</li>
-              <li>Открой Settings → Pages.</li>
-              <li>Выбери Branch: <strong>main</strong>, Folder: <strong>/root</strong>.</li>
-              <li>После публикации открой сайт и добавь LifeOS на главный экран.</li>
-            </ol>
-          </div>
-        </article>
+          </article>
+          <article class="glass-panel card">
+            <div class="section-head"><div><p class="eyebrow">GitHub Pages</p><h3>Публикация</h3></div></div>
+            <div class="info-box">
+              <ol>
+                <li>Загрузи содержимое архива в корень репозитория.</li>
+                <li>Открой Settings → Pages.</li>
+                <li>Выбери Branch: <strong>main</strong>, Folder: <strong>/root</strong>.</li>
+                <li>Открой опубликованный сайт в Safari/Chrome и установи как PWA.</li>
+              </ol>
+            </div>
+            <div class="info-box subtle">
+              <h4>Что хранится локально</h4>
+              <p>Записи времени, отметки работы, привычки, цели, заметки, настроение, XP и настройки. Сервер, база данных и внешние API не используются.</p>
+            </div>
+          </article>
+        </div>
       </section>
     </main>
   </div>
@@ -300,11 +344,10 @@
   <dialog id="iosDialog" class="glass-dialog">
     <button class="dialog-close" id="closeIosDialog" aria-label="Закрыть">×</button>
     <h3>Добавить LifeOS на iPhone</h3>
-    <p>Открой сайт в Safari, нажми кнопку «Поделиться», затем выбери «На экран Домой». После этого LifeOS будет запускаться как отдельное приложение.</p>
+    <p>Открой сайт в Safari, нажми «Поделиться», затем выбери «На экран Домой». После этого LifeOS будет запускаться как отдельное приложение.</p>
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
   <script src="./app.js" defer></script>
 </body>
 </html>
