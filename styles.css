@@ -936,3 +936,16 @@ body[data-motion="low"] .today-center::before{display:none}
     gap: 10px;
   }
 }
+
+
+/* v15 modules */
+.module-card strong { letter-spacing: -0.02em; }
+.module-card .button-row { margin-top: 10px; }
+#bookStats.metric-grid, #courseStats.metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 760px) {
+  #books .two-columns, #courses .two-columns { grid-template-columns: 1fr; }
+  #bookStats.metric-grid, #courseStats.metric-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 430px) {
+  #bookStats.metric-grid, #courseStats.metric-grid { grid-template-columns: 1fr; }
+}

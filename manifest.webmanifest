@@ -1,7 +1,7 @@
 {
-  "name": "LifeOS v14 — Today Screen",
+  "name": "LifeOS v15 — Modules",
   "short_name": "LifeOS",
-  "description": "PWA на базе стабильной v12: Today Screen, кольца, быстрые действия, живой таймер, работа, спорт, саморазвитие, диагностика и PWA-центр обслуживания.",
+  "description": "PWA LifeOS: работа, спорт, саморазвитие, активные таймеры, книги, курсы, проекты, отчёты и стабильный PWA-центр обслуживания.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -80,6 +80,18 @@
       "short_name": "Рост",
       "url": "./index.html#selfdev",
       "description": "Добавить проект, книгу, курс или свой вариант"
+    },
+    {
+      "name": "Книги",
+      "short_name": "Книги",
+      "url": "./index.html#books",
+      "description": "Добавить чтение и прогресс книги"
+    },
+    {
+      "name": "Курсы",
+      "short_name": "Курсы",
+      "url": "./index.html#courses",
+      "description": "Добавить урок и прогресс курса"
     },
     {
       "name": "Отчёт",

@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="LifeOS">
   <meta name="description" content="LifeOS — локальная PWA-панель контроля работы, времени, денег, проектов и привычек.">
-  <title>LifeOS v14 Active Timer</title>
+  <title>LifeOS v15 Modules</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
@@ -108,6 +108,8 @@
       <button class="tab" data-tab="timers">Таймеры</button>
       <button class="tab" data-tab="sport">Спорт</button>
       <button class="tab" data-tab="selfdev">Саморазвитие</button>
+      <button class="tab" data-tab="books">Книги</button>
+      <button class="tab" data-tab="courses">Курсы</button>
       <button class="tab" data-tab="money">Деньги</button>
       <button class="tab" data-tab="projects">Проекты</button>
       <button class="tab" data-tab="reports">Отчёты</button>
@@ -536,6 +538,73 @@
           <article class="panel card span-2">
             <div class="section-head"><div><p class="eyebrow">История</p><h3>Сессии саморазвития</h3></div></div>
             <div id="selfHistory" class="feed"></div>
+          </article>
+        </div>
+      </section>
+
+
+      <section id="books" class="view">
+        <div class="grid two-columns">
+          <article class="panel card">
+            <div class="section-head"><div><p class="eyebrow">Книги</p><h3>Добавить чтение</h3></div></div>
+            <form id="bookForm" class="form">
+              <label class="field">Дата<input class="input" type="date" id="bookDate" required></label>
+              <label class="field">Название книги<input class="input" id="bookTitle" maxlength="100" required placeholder="Например: Atomic Habits"></label>
+              <label class="field">Автор / источник<input class="input" id="bookAuthor" maxlength="80" placeholder="Автор или где читаешь"></label>
+              <div class="form-row">
+                <label class="field">Всего страниц<input class="input" type="number" id="bookTotalPages" min="0" step="1" placeholder="320"></label>
+                <label class="field">Прочитано всего<input class="input" type="number" id="bookCurrentPage" min="0" step="1" placeholder="120"></label>
+              </div>
+              <div class="form-row">
+                <label class="field">Страниц сегодня<input class="input" type="number" id="bookPagesToday" min="0" step="1" placeholder="20"></label>
+                <label class="field">Время, мин<input class="input" type="number" id="bookMinutes" min="0" max="720" step="5" value="30"></label>
+              </div>
+              <label class="field">Статус<select class="select" id="bookStatus"><option>Читаю</option><option>Закончил</option><option>Отложил</option><option>В планах</option></select></label>
+              <label class="field">Заметка<textarea id="bookNote" rows="3" maxlength="420" placeholder="Идеи, цитаты, что запомнить"></textarea></label>
+              <button class="primary-btn full" type="submit">Сохранить книгу и зачесть в саморазвитие</button>
+            </form>
+          </article>
+          <article class="panel card">
+            <div class="section-head"><div><p class="eyebrow">Библиотека</p><h3>Прогресс книг</h3></div></div>
+            <div id="bookStats" class="metric-grid"></div>
+            <div id="bookList" class="stack-list"></div>
+          </article>
+          <article class="panel card span-2">
+            <div class="section-head"><div><p class="eyebrow">История чтения</p><h3>Последние сессии</h3></div></div>
+            <div id="bookHistory" class="feed"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="courses" class="view">
+        <div class="grid two-columns">
+          <article class="panel card">
+            <div class="section-head"><div><p class="eyebrow">Курсы</p><h3>Добавить занятие</h3></div></div>
+            <form id="courseForm" class="form">
+              <label class="field">Дата<input class="input" type="date" id="courseDate" required></label>
+              <label class="field">Название курса<input class="input" id="courseTitle" maxlength="100" required placeholder="Например: JavaScript, Serbian A1, Ableton"></label>
+              <label class="field">Платформа / ссылка<input class="input" id="courseLink" maxlength="220" placeholder="https://... или название платформы"></label>
+              <div class="form-row">
+                <label class="field">Всего уроков<input class="input" type="number" id="courseTotalLessons" min="0" step="1" placeholder="40"></label>
+                <label class="field">Пройдено всего<input class="input" type="number" id="courseDoneLessons" min="0" step="1" placeholder="12"></label>
+              </div>
+              <div class="form-row">
+                <label class="field">Уроков сегодня<input class="input" type="number" id="courseLessonsToday" min="0" step="1" placeholder="1"></label>
+                <label class="field">Время, мин<input class="input" type="number" id="courseMinutes" min="0" max="720" step="5" value="45"></label>
+              </div>
+              <label class="field">Статус<select class="select" id="courseStatus"><option>В процессе</option><option>Закончил</option><option>Пауза</option><option>В планах</option></select></label>
+              <label class="field">Заметка<textarea id="courseNote" rows="3" maxlength="420" placeholder="Тема урока, что закрепить, домашка"></textarea></label>
+              <button class="primary-btn full" type="submit">Сохранить курс и зачесть в саморазвитие</button>
+            </form>
+          </article>
+          <article class="panel card">
+            <div class="section-head"><div><p class="eyebrow">Обучение</p><h3>Прогресс курсов</h3></div></div>
+            <div id="courseStats" class="metric-grid"></div>
+            <div id="courseList" class="stack-list"></div>
+          </article>
+          <article class="panel card span-2">
+            <div class="section-head"><div><p class="eyebrow">История занятий</p><h3>Последние уроки</h3></div></div>
+            <div id="courseHistory" class="feed"></div>
           </article>
         </div>
       </section>

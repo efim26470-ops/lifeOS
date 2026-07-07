@@ -1,10 +1,10 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '14.0.0-active-timer';
-  const DATA_VERSION = 14;
-  const KEY = 'lifeos.v14.active';
-  const LEGACY_KEYS = ['lifeos.v13.today','lifeos.v12.stability','lifeos.v11.v8base.complete','lifeos.v10.stable','lifeos.v9.complete','lifeos.v8.rings','lifeos.v7.design', 'lifeos.v5.configurable', 'lifeos.v4.final', 'lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
+  const APP_VERSION = '15.0.0-modules';
+  const DATA_VERSION = 15;
+  const KEY = 'lifeos.v15.modules';
+  const LEGACY_KEYS = ['lifeos.v14.active','lifeos.v13.today','lifeos.v12.stability','lifeos.v11.v8base.complete','lifeos.v10.stable','lifeos.v9.complete','lifeos.v8.rings','lifeos.v7.design', 'lifeos.v5.configurable', 'lifeos.v4.final', 'lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
   const DEFAULT_START = '2026-07-03';
   const DEFAULT_END = '2026-08-31';
   const DAY_LABELS = [
@@ -91,6 +91,8 @@
   const DEFAULT_PROJECTS = [
     { id: uid(), name: 'LifeOS', status: 'В работе', progress: 90, deadline: DEFAULT_END, repo: '', live: '', notes: 'PWA-панель дня, работы, денег, проектов и привычек.' }
   ];
+  const DEFAULT_BOOKS = [];
+  const DEFAULT_COURSES = [];
 
   let memoryStore = null;
   let storageDriver = detectStorageDriver();
@@ -284,6 +286,8 @@
         { id: uid(), name: 'Серия 10 полных рабочих дней', current: 0, target: 10, unit: 'дней', auto: 'streak' }
       ],
       projects: DEFAULT_PROJECTS.map((p) => ({ ...p, id: uid() })),
+      books: DEFAULT_BOOKS.map((b) => ({ ...b, id: uid(), sessions: [] })),
+      courses: DEFAULT_COURSES.map((c) => ({ ...c, id: uid(), sessions: [] })),
       focusSessions: [],
       finance: { hourRate: 350, fullDayBonus: 0, missPenalty: 0, moneyTarget: 0 },
       notifications: { enabled: false, lastFired: {} },
@@ -325,6 +329,8 @@
       habitChecks: parsed.habitChecks || {},
       goals: Array.isArray(parsed.goals) && parsed.goals.length ? parsed.goals : base.goals,
       projects: Array.isArray(parsed.projects) ? parsed.projects : base.projects,
+      books: Array.isArray(parsed.books) ? parsed.books : base.books,
+      courses: Array.isArray(parsed.courses) ? parsed.courses : base.courses,
       focusSessions: Array.isArray(parsed.focusSessions) ? parsed.focusSessions : [],
       finance: { ...base.finance, ...(parsed.finance || {}) },
       notifications: { ...base.notifications, ...(parsed.notifications || {}) },
@@ -839,6 +845,8 @@
     $('#entryDate').value = state.selectedDate;
     if ($('#sportDate')) $('#sportDate').value = state.selectedDate;
     if ($('#selfDate')) $('#selfDate').value = state.selectedDate;
+    if ($('#bookDate')) $('#bookDate').value = state.selectedDate;
+    if ($('#courseDate')) $('#courseDate').value = state.selectedDate;
     saveState();
     renderAll();
   }
@@ -966,6 +974,8 @@
     renderActiveTimers();
     renderSport();
     renderSelfDev();
+    renderBooks();
+    renderCourses();
     renderMoney();
     renderProjects();
     renderAchievements();
@@ -1002,7 +1012,7 @@
   }
 
   function syncDateInputs() {
-    ['#selectedDate', '#entryDate', '#sportDate', '#selfDate'].forEach((selector) => {
+    ['#selectedDate', '#entryDate', '#sportDate', '#selfDate', '#bookDate', '#courseDate'].forEach((selector) => {
       const input = $(selector);
       if (!input) return;
       input.min = periodStart();
@@ -2190,6 +2200,134 @@
     });
   }
 
+
+  function sessionWindowFromMinutes(date, minutes, preferredEnd = null) {
+    const mins = Math.max(1, Math.min(1439, Number(minutes || 0) || 1));
+    const now = new Date();
+    let endMinutes;
+    if (date === todayKey()) endMinutes = now.getHours() * 60 + now.getMinutes();
+    else if (preferredEnd) endMinutes = timeToMinutes(preferredEnd);
+    else endMinutes = 21 * 60;
+    endMinutes = Math.max(mins, Math.min(23 * 60 + 59, endMinutes));
+    const startMinutes = Math.max(0, endMinutes - mins);
+    return { start: minutesToTime(startMinutes), end: minutesToTime(endMinutes) };
+  }
+
+  function upsertBook(data) {
+    const title = String(data.title || '').trim();
+    if (!title) return toast('Введи название книги.');
+    state.books = Array.isArray(state.books) ? state.books : [];
+    let book = state.books.find((item) => item.title.toLowerCase() === title.toLowerCase());
+    if (!book) {
+      book = { id: uid(), title, author: '', status: 'Читаю', totalPages: 0, currentPage: 0, sessions: [], notes: '' };
+      state.books.unshift(book);
+    }
+    const pagesToday = Math.max(0, Number(data.pagesToday || 0));
+    const totalPages = Math.max(0, Number(data.totalPages || book.totalPages || 0));
+    const currentPageInput = Math.max(0, Number(data.currentPage || 0));
+    book.author = String(data.author || book.author || '').trim();
+    book.status = String(data.status || book.status || 'Читаю');
+    book.totalPages = totalPages;
+    book.currentPage = Math.min(totalPages || Math.max(currentPageInput, Number(book.currentPage || 0) + pagesToday), Math.max(currentPageInput, Number(book.currentPage || 0) + pagesToday));
+    if (currentPageInput) book.currentPage = totalPages ? Math.min(totalPages, currentPageInput) : currentPageInput;
+    book.notes = String(data.note || book.notes || '').trim();
+    const minutes = Math.max(0, Number(data.minutes || 0));
+    const date = data.date || state.selectedDate;
+    const session = { id: uid(), date, pages: pagesToday, minutes, note: String(data.note || '').trim(), createdAt: new Date().toISOString() };
+    book.sessions = Array.isArray(book.sessions) ? book.sessions : [];
+    book.sessions.unshift(session);
+    if (minutes > 0) {
+      const win = sessionWindowFromMinutes(date, minutes);
+      state.entries.push({ id: uid(), date, start: win.start, end: win.end, type: 'Саморазвитие: Книга', selfDevActivity: 'Книга', note: `${title}${pagesToday ? ` · ${pagesToday} стр.` : ''}${data.note ? ` · ${data.note}` : ''}`, createdAt: new Date().toISOString(), module: 'book', moduleId: book.id });
+    }
+    saveState(); renderAll(); toast('Книга обновлена и зачтена в саморазвитие.');
+  }
+
+  function upsertCourse(data) {
+    const title = String(data.title || '').trim();
+    if (!title) return toast('Введи название курса.');
+    state.courses = Array.isArray(state.courses) ? state.courses : [];
+    let course = state.courses.find((item) => item.title.toLowerCase() === title.toLowerCase());
+    if (!course) {
+      course = { id: uid(), title, link: '', status: 'В процессе', totalLessons: 0, doneLessons: 0, sessions: [], notes: '' };
+      state.courses.unshift(course);
+    }
+    const lessonsToday = Math.max(0, Number(data.lessonsToday || 0));
+    const totalLessons = Math.max(0, Number(data.totalLessons || course.totalLessons || 0));
+    const doneInput = Math.max(0, Number(data.doneLessons || 0));
+    course.link = String(data.link || course.link || '').trim();
+    course.status = String(data.status || course.status || 'В процессе');
+    course.totalLessons = totalLessons;
+    course.doneLessons = Math.min(totalLessons || Math.max(doneInput, Number(course.doneLessons || 0) + lessonsToday), Math.max(doneInput, Number(course.doneLessons || 0) + lessonsToday));
+    if (doneInput) course.doneLessons = totalLessons ? Math.min(totalLessons, doneInput) : doneInput;
+    course.notes = String(data.note || course.notes || '').trim();
+    const minutes = Math.max(0, Number(data.minutes || 0));
+    const date = data.date || state.selectedDate;
+    const session = { id: uid(), date, lessons: lessonsToday, minutes, note: String(data.note || '').trim(), createdAt: new Date().toISOString() };
+    course.sessions = Array.isArray(course.sessions) ? course.sessions : [];
+    course.sessions.unshift(session);
+    if (minutes > 0) {
+      const win = sessionWindowFromMinutes(date, minutes);
+      state.entries.push({ id: uid(), date, start: win.start, end: win.end, type: 'Саморазвитие: Курс', selfDevActivity: 'Курс', note: `${title}${lessonsToday ? ` · ${lessonsToday} урок.` : ''}${data.note ? ` · ${data.note}` : ''}`, createdAt: new Date().toISOString(), module: 'course', moduleId: course.id });
+    }
+    saveState(); renderAll(); toast('Курс обновлён и зачтён в саморазвитие.');
+  }
+
+  function renderBooks() {
+    const books = Array.isArray(state.books) ? state.books : [];
+    const totalBooks = books.length;
+    const finished = books.filter((b) => b.status === 'Закончил' || (Number(b.totalPages || 0) > 0 && Number(b.currentPage || 0) >= Number(b.totalPages || 0))).length;
+    const pages = books.reduce((sum, b) => sum + Number(b.currentPage || 0), 0);
+    const minutes = books.reduce((sum, b) => sum + (Array.isArray(b.sessions) ? b.sessions.reduce((s, x) => s + Number(x.minutes || 0), 0) : 0), 0);
+    const statsBox = $('#bookStats');
+    if (statsBox) statsBox.innerHTML = [
+      ['Книг', totalBooks, 'в библиотеке'],
+      ['Завершено', finished, 'книг'],
+      ['Страниц', pages, 'прочитано'],
+      ['Время', hm(minutes), 'на чтение']
+    ].map(([a,b,c]) => `<article class="metric"><span>${a}</span><strong>${b}</strong><span>${c}</span></article>`).join('');
+    const list = $('#bookList');
+    if (list) list.innerHTML = books.length ? books.map((b) => {
+      const pct = Number(b.totalPages || 0) ? percent(Number(b.currentPage || 0), Number(b.totalPages || 0)) : 0;
+      return `<article class="list-card module-card"><strong>📖 ${escapeHtml(b.title)} · ${escapeHtml(b.status || 'Читаю')}</strong><p>${escapeHtml(b.author || '')}${b.totalPages ? ` · ${Number(b.currentPage || 0)} / ${Number(b.totalPages || 0)} стр.` : ' · страницы не заданы'}</p><div class="progress"><span style="width:${pct}%"></span></div><p>${pct}%${b.notes ? ` · ${escapeHtml(b.notes)}` : ''}</p><div class="button-row"><button class="mini-btn" data-book-plus="${escapeHtml(b.id)}">+10 стр.</button><button class="mini-btn" data-book-finish="${escapeHtml(b.id)}">Готово</button><button class="mini-btn" data-book-del="${escapeHtml(b.id)}">Удалить</button></div></article>`;
+    }).join('') : '<div class="empty-state">Добавь книгу — она будет учитывать страницы, время и кольцо саморазвития.</div>';
+    const history = $('#bookHistory');
+    if (history) {
+      const sessions = books.flatMap((b) => (b.sessions || []).map((s) => ({ ...s, title: b.title }))).sort((a,b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || '').localeCompare(a.createdAt || '')).slice(0, 20);
+      history.innerHTML = sessions.length ? sessions.map((s) => `<article class="feed-item"><strong>${formatDate(s.date)} · ${escapeHtml(s.title)}</strong><p>${s.pages ? `${s.pages} стр. · ` : ''}${hm(s.minutes || 0)}${s.note ? ` · ${escapeHtml(s.note)}` : ''}</p></article>`).join('') : '<div class="empty-state">История чтения пока пустая.</div>';
+    }
+    const dateInput = $('#bookDate');
+    if (dateInput && !dateInput.value) dateInput.value = state.selectedDate;
+  }
+
+  function renderCourses() {
+    const courses = Array.isArray(state.courses) ? state.courses : [];
+    const totalCourses = courses.length;
+    const finished = courses.filter((c) => c.status === 'Закончил' || (Number(c.totalLessons || 0) > 0 && Number(c.doneLessons || 0) >= Number(c.totalLessons || 0))).length;
+    const lessons = courses.reduce((sum, c) => sum + Number(c.doneLessons || 0), 0);
+    const minutes = courses.reduce((sum, c) => sum + (Array.isArray(c.sessions) ? c.sessions.reduce((s, x) => s + Number(x.minutes || 0), 0) : 0), 0);
+    const statsBox = $('#courseStats');
+    if (statsBox) statsBox.innerHTML = [
+      ['Курсов', totalCourses, 'в списке'],
+      ['Завершено', finished, 'курсов'],
+      ['Уроков', lessons, 'пройдено'],
+      ['Время', hm(minutes), 'на обучение']
+    ].map(([a,b,c]) => `<article class="metric"><span>${a}</span><strong>${b}</strong><span>${c}</span></article>`).join('');
+    const list = $('#courseList');
+    if (list) list.innerHTML = courses.length ? courses.map((c) => {
+      const pct = Number(c.totalLessons || 0) ? percent(Number(c.doneLessons || 0), Number(c.totalLessons || 0)) : 0;
+      const link = c.link && String(c.link).startsWith('http') ? ` · <a href="${escapeHtml(c.link)}" target="_blank" rel="noreferrer">ссылка</a>` : c.link ? ` · ${escapeHtml(c.link)}` : '';
+      return `<article class="list-card module-card"><strong>🎓 ${escapeHtml(c.title)} · ${escapeHtml(c.status || 'В процессе')}</strong><p>${c.totalLessons ? `${Number(c.doneLessons || 0)} / ${Number(c.totalLessons || 0)} урок.` : 'уроки не заданы'}${link}</p><div class="progress"><span style="width:${pct}%"></span></div><p>${pct}%${c.notes ? ` · ${escapeHtml(c.notes)}` : ''}</p><div class="button-row"><button class="mini-btn" data-course-plus="${escapeHtml(c.id)}">+1 урок</button><button class="mini-btn" data-course-finish="${escapeHtml(c.id)}">Готово</button><button class="mini-btn" data-course-del="${escapeHtml(c.id)}">Удалить</button></div></article>`;
+    }).join('') : '<div class="empty-state">Добавь курс — он будет учитывать уроки, время и кольцо саморазвития.</div>';
+    const history = $('#courseHistory');
+    if (history) {
+      const sessions = courses.flatMap((c) => (c.sessions || []).map((s) => ({ ...s, title: c.title }))).sort((a,b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || '').localeCompare(a.createdAt || '')).slice(0, 20);
+      history.innerHTML = sessions.length ? sessions.map((s) => `<article class="feed-item"><strong>${formatDate(s.date)} · ${escapeHtml(s.title)}</strong><p>${s.lessons ? `${s.lessons} урок. · ` : ''}${hm(s.minutes || 0)}${s.note ? ` · ${escapeHtml(s.note)}` : ''}</p></article>`).join('') : '<div class="empty-state">История курсов пока пустая.</div>';
+    }
+    const dateInput = $('#courseDate');
+    if (dateInput && !dateInput.value) dateInput.value = state.selectedDate;
+  }
+
   function renderFinanceForm() {
     const f = state.finance;
     $('#hourRate').value = f.hourRate ?? 0;
@@ -2246,6 +2384,10 @@
     const stats = periodStats();
     const focus = state.focusSessions.reduce((sum, s) => sum + (s.minutes || 0), 0);
     const entries = state.entries.length;
+    const booksDone = (state.books || []).filter((b) => b.status === 'Закончил' || (Number(b.totalPages || 0) > 0 && Number(b.currentPage || 0) >= Number(b.totalPages || 0))).length;
+    const coursesDone = (state.courses || []).filter((c) => c.status === 'Закончил' || (Number(c.totalLessons || 0) > 0 && Number(c.doneLessons || 0) >= Number(c.totalLessons || 0))).length;
+    const bookPages = (state.books || []).reduce((sum, b) => sum + Number(b.currentPage || 0), 0);
+    const courseLessons = (state.courses || []).reduce((sum, c) => sum + Number(c.doneLessons || 0), 0);
     const projectsDone = state.projects.filter((p) => Number(p.progress || 0) >= 100 || p.status === 'Готово').length;
     const sports = sportStats();
     const sportMinutes = sports.total;
@@ -2270,6 +2412,10 @@
     nextMilestones(selfDev.entries.length, 5, 6).forEach((target) => catalog.push([`Сессии роста ×${target}`, selfDev.entries.length >= target, selfDev.entries.length, target, `Провести ${target} сессий саморазвития.`]));
     nextMilestones(notes, 7, 5).forEach((target) => catalog.push([`Дневник ×${target}`, notes >= target, notes, target, `Оставить ${target} заметок дня.`]));
     nextMilestones(state.projects.length, 3, 4).forEach((target) => catalog.push([`Проекты ×${target}`, state.projects.length >= target, state.projects.length, target, `Добавить ${target} проектов.`]));
+    nextMilestones(bookPages, 100, 4).forEach((target) => catalog.push([`Страницы ×${target}`, bookPages >= target, bookPages, target, `Прочитать ${target} страниц.`]));
+    nextMilestones(booksDone, 1, 4).forEach((target) => catalog.push([`Книги ×${target}`, booksDone >= target, booksDone, target, `Завершить ${target} книг.`]));
+    nextMilestones(courseLessons, 10, 4).forEach((target) => catalog.push([`Уроки ×${target}`, courseLessons >= target, courseLessons, target, `Пройти ${target} уроков.`]));
+    nextMilestones(coursesDone, 1, 4).forEach((target) => catalog.push([`Курсы ×${target}`, coursesDone >= target, coursesDone, target, `Завершить ${target} курсов.`]));
     nextMilestones(projectsDone, 1, 4).forEach((target) => catalog.push([`Релизы ×${target}`, projectsDone >= target, projectsDone, target, `Закрыть ${target} проектов на 100% или статусом Готово.`]));
     return catalog;
   }
@@ -2326,6 +2472,10 @@
       <p><strong>Саморазвитие:</strong> ${hm(selfDev.total, false)} · <strong>Сессий:</strong> ${selfDev.entries.length} · <strong>Любимое направление:</strong> ${selfDev.favorite ? escapeHtml(selfDev.favorite[0]) : 'нет данных'}</p>
       <h3>Категории времени</h3>
       <ul>${typeRows.map(([type, mins]) => `<li><strong>${escapeHtml(type)}:</strong> ${hm(mins, false)}</li>`).join('')}</ul>
+      <h3>Книги</h3>
+      <ul>${(state.books || []).map((b) => `<li><strong>${escapeHtml(b.title)}</strong> — ${escapeHtml(b.status || 'Читаю')}, ${Number(b.currentPage || 0)} / ${Number(b.totalPages || 0)} стр.</li>`).join('') || '<li>Книги не добавлены.</li>'}</ul>
+      <h3>Курсы</h3>
+      <ul>${(state.courses || []).map((c) => `<li><strong>${escapeHtml(c.title)}</strong> — ${escapeHtml(c.status || 'В процессе')}, ${Number(c.doneLessons || 0)} / ${Number(c.totalLessons || 0)} урок.</li>`).join('') || '<li>Курсы не добавлены.</li>'}</ul>
       <h3>Проекты</h3>
       <ul>${state.projects.map((p) => `<li><strong>${escapeHtml(p.name)}</strong> — ${escapeHtml(p.status)}, ${Number(p.progress || 0)}%</li>`).join('') || '<li>Проекты не добавлены.</li>'}</ul>
       <h3>Вывод</h3>
@@ -2551,6 +2701,34 @@
         if (p) p.progress = Math.min(100, Number(p.progress || 0) + 10);
         saveState(); renderAll();
       }
+      if (target.dataset.bookDel) {
+        state.books = (state.books || []).filter((b) => b.id !== target.dataset.bookDel);
+        saveState(); renderAll(); toast('Книга удалена. Записи времени сохранены.');
+      }
+      if (target.dataset.bookPlus) {
+        const b = (state.books || []).find((x) => x.id === target.dataset.bookPlus);
+        if (b) { b.currentPage = Number(b.currentPage || 0) + 10; b.sessions = b.sessions || []; b.sessions.unshift({ id: uid(), date: state.selectedDate, pages: 10, minutes: 0, note: 'Быстро +10 страниц', createdAt: new Date().toISOString() }); }
+        saveState(); renderAll();
+      }
+      if (target.dataset.bookFinish) {
+        const b = (state.books || []).find((x) => x.id === target.dataset.bookFinish);
+        if (b) { b.status = 'Закончил'; if (Number(b.totalPages || 0)) b.currentPage = Number(b.totalPages || 0); }
+        saveState(); renderAll(); toast('Книга завершена.');
+      }
+      if (target.dataset.courseDel) {
+        state.courses = (state.courses || []).filter((c) => c.id !== target.dataset.courseDel);
+        saveState(); renderAll(); toast('Курс удалён. Записи времени сохранены.');
+      }
+      if (target.dataset.coursePlus) {
+        const c = (state.courses || []).find((x) => x.id === target.dataset.coursePlus);
+        if (c) { c.doneLessons = Number(c.doneLessons || 0) + 1; c.sessions = c.sessions || []; c.sessions.unshift({ id: uid(), date: state.selectedDate, lessons: 1, minutes: 0, note: 'Быстро +1 урок', createdAt: new Date().toISOString() }); }
+        saveState(); renderAll();
+      }
+      if (target.dataset.courseFinish) {
+        const c = (state.courses || []).find((x) => x.id === target.dataset.courseFinish);
+        if (c) { c.status = 'Закончил'; if (Number(c.totalLessons || 0)) c.doneLessons = Number(c.totalLessons || 0); }
+        saveState(); renderAll(); toast('Курс завершён.');
+      }
       if (target.dataset.customTypeDel) {
         state.customTypes = (state.customTypes || []).filter((type) => type !== target.dataset.customTypeDel);
         saveState(); renderAll(); toast('Свой вариант удалён из списка. Старые записи сохранены.');
@@ -2730,6 +2908,36 @@
       state.ui.glassBlur = Number($('#glassBlur').value || 20);
       state.ui.animationLevel = $('#animationLevel').value || 'normal';
       saveState(); renderAll(); toast('Визуал и цели сохранены.');
+    });
+    $('#bookForm')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      upsertBook({
+        date: $('#bookDate').value || state.selectedDate,
+        title: $('#bookTitle').value,
+        author: $('#bookAuthor').value,
+        totalPages: $('#bookTotalPages').value,
+        currentPage: $('#bookCurrentPage').value,
+        pagesToday: $('#bookPagesToday').value,
+        minutes: $('#bookMinutes').value,
+        status: $('#bookStatus').value,
+        note: $('#bookNote').value.trim()
+      });
+      $('#bookPagesToday').value = ''; $('#bookMinutes').value = '30'; $('#bookNote').value = '';
+    });
+    $('#courseForm')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      upsertCourse({
+        date: $('#courseDate').value || state.selectedDate,
+        title: $('#courseTitle').value,
+        link: $('#courseLink').value,
+        totalLessons: $('#courseTotalLessons').value,
+        doneLessons: $('#courseDoneLessons').value,
+        lessonsToday: $('#courseLessonsToday').value,
+        minutes: $('#courseMinutes').value,
+        status: $('#courseStatus').value,
+        note: $('#courseNote').value.trim()
+      });
+      $('#courseLessonsToday').value = ''; $('#courseMinutes').value = '45'; $('#courseNote').value = '';
     });
     $('#projectForm').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -2917,6 +3125,8 @@
     $('#entryEnd').value = '11:00';
     if ($('#sportDate')) $('#sportDate').value = state.selectedDate;
     if ($('#selfDate')) $('#selfDate').value = state.selectedDate;
+    if ($('#bookDate')) $('#bookDate').value = state.selectedDate;
+    if ($('#courseDate')) $('#courseDate').value = state.selectedDate;
     renderAll();
     checkReminders();
     setInterval(checkReminders, 60 * 1000);
