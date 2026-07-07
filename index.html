@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="LifeOS">
   <meta name="description" content="LifeOS — локальная PWA-панель контроля работы, времени, денег, проектов и привычек.">
-  <title>LifeOS v15 Modules</title>
+  <title>LifeOS v16 Profiles Reports</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
@@ -150,6 +150,17 @@
                   <button class="soft-btn" data-today-quick="custom" type="button">Свой вариант</button>
                 </div>
               </div>
+            </div>
+          </article>
+
+          <article class="panel card span-2 mini-today-card" id="miniTodayCard" data-widget="miniMode">
+            <div class="section-head"><div><p class="eyebrow">Режим «Мини»</p><h3>Сегодня</h3></div><button class="soft-btn" id="miniModeOffBtn" type="button">Обычный вид</button></div>
+            <div class="mini-mode-grid">
+              <button class="mini-big-btn" data-mini-action="work" type="button"><span>💼</span><strong>Работа</strong><small id="miniWorkText">0ч / 0ч</small></button>
+              <button class="mini-big-btn" data-mini-action="sport" type="button"><span>🏋️</span><strong>Спорт</strong><small id="miniSportText">0 / 0</small></button>
+              <button class="mini-big-btn" data-mini-action="self" type="button"><span>✦</span><strong>Саморазвитие</strong><small id="miniSelfText">0м</small></button>
+              <button class="mini-big-btn" data-mini-action="quick" type="button"><span>＋</span><strong>Быстрая запись</strong><small>журнал</small></button>
+              <button class="mini-big-btn" data-mini-action="close" type="button"><span>✓</span><strong>Закрыть день</strong><small id="miniCloseText">итог</small></button>
             </div>
           </article>
 
@@ -657,7 +668,7 @@
         <div class="grid two-columns">
           <article class="panel card">
             <div class="section-head"><div><p class="eyebrow">Итоговый отчёт</p><h3 id="reportPeriodTitle">Период LifeOS</h3></div></div>
-            <div class="button-row stretch"><button class="primary-btn" id="generateReportBtn">Сформировать отчёт</button><button class="soft-btn" id="downloadReportBtn">Скачать HTML</button></div>
+            <div class="button-row stretch"><button class="primary-btn" id="generateReportBtn">Сформировать отчёт</button><button class="soft-btn" id="downloadReportBtn">Скачать HTML</button><button class="soft-btn" id="downloadReportCsvBtn">Скачать CSV</button><button class="soft-btn" id="downloadReportJsonBtn">Скачать JSON</button><button class="soft-btn" id="copyReportTextBtn">Скопировать текст</button></div>
             <div class="divider"></div>
             <div id="reportPreview" class="report-preview"></div>
           </article>
@@ -707,6 +718,16 @@
           </article>
 
           <article class="panel card span-2">
+            <div class="section-head"><div><p class="eyebrow">Профили</p><h3>Режимы LifeOS</h3></div></div>
+            <p class="muted small">У каждого профиля свой график, цели, кольца, тема и быстрые шаблоны. Можно переключаться после 31 августа и использовать LifeOS дальше.</p>
+            <div id="profileList" class="profile-grid"></div>
+            <div class="button-row stretch">
+              <button class="soft-btn" id="saveProfileBtn" type="button">Сохранить текущие настройки в профиль</button>
+              <button class="soft-btn" id="duplicateProfileBtn" type="button">Создать копию профиля</button>
+            </div>
+          </article>
+
+          <article class="panel card span-2">
             <div class="section-head"><div><p class="eyebrow">Визуальный стиль</p><h3>Liquid Glass, темы и анимации</h3></div></div>
             <form id="designForm" class="form setup-form">
               <div class="form-row">
@@ -752,6 +773,15 @@
             </div>
             <button class="soft-btn full" id="enableNotificationsBtn">Включить локальные уведомления</button>
           </article>
+          <article class="panel card">
+            <div class="section-head"><div><p class="eyebrow">iPhone</p><h3>Режим «Мини»</h3></div></div>
+            <p class="muted small">Компактный экран для PWA: только работа, спорт, саморазвитие, быстрая запись и закрытие дня.</p>
+            <div class="button-row stretch">
+              <button class="primary-btn" id="toggleMiniModeBtn" type="button">Включить / выключить Мини</button>
+              <button class="soft-btn" data-jump="dashboard" type="button">Открыть сегодня</button>
+            </div>
+          </article>
+
           <article class="panel card">
             <div class="section-head"><div><p class="eyebrow">Свои варианты</p><h3>Категории времени</h3></div></div>
             <form id="customTypeForm" class="form compact-form">

@@ -1,10 +1,10 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '15.0.0-modules';
-  const DATA_VERSION = 15;
-  const KEY = 'lifeos.v15.modules';
-  const LEGACY_KEYS = ['lifeos.v14.active','lifeos.v13.today','lifeos.v12.stability','lifeos.v11.v8base.complete','lifeos.v10.stable','lifeos.v9.complete','lifeos.v8.rings','lifeos.v7.design', 'lifeos.v5.configurable', 'lifeos.v4.final', 'lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
+  const APP_VERSION = '16.0.0-profiles-reports';
+  const DATA_VERSION = 16;
+  const KEY = 'lifeos.v16.profiles.reports';
+  const LEGACY_KEYS = ['lifeos.v15.modules','lifeos.v14.active','lifeos.v13.today','lifeos.v12.stability','lifeos.v11.v8base.complete','lifeos.v10.stable','lifeos.v9.complete','lifeos.v8.rings','lifeos.v7.design', 'lifeos.v5.configurable', 'lifeos.v4.final', 'lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
   const DEFAULT_START = '2026-07-03';
   const DEFAULT_END = '2026-08-31';
   const DAY_LABELS = [
@@ -41,6 +41,14 @@
     ['graphite', 'Graphite', 'Строгий графитовый стиль'],
     ['ipod', 'iPod', 'Белый минимализм и синий акцент'],
     ['snitch', 'Стукач', 'Пасхальная тема']
+  ];
+
+  const DEFAULT_PROFILES = [
+    { id: 'work', name: 'Рабочий режим', icon: '💼', theme: 'ios17', ringSlots: ['work','sport','self'], workoutTarget: 3, selfTargetMinutes: 60, templates: [] },
+    { id: 'study', name: 'Учёба', icon: '📚', theme: 'journal', ringSlots: ['self','work','sport'], workoutTarget: 2, selfTargetMinutes: 120, templates: [{ name: 'Учёба 45 мин', type: 'Саморазвитие: Курс', start: '19:00', end: '19:45', note: 'Учёба / курс', icon: '🎓' }] },
+    { id: 'summer', name: 'Лето', icon: '☀️', theme: 'aurora', ringSlots: ['work','sport','self'], workoutTarget: 4, selfTargetMinutes: 45, templates: [{ name: 'Прогулка', type: 'Прогулка', start: '20:00', end: '21:00', note: 'Активность на улице', icon: '🚶' }] },
+    { id: 'intensive', name: 'Интенсив', icon: '🔥', theme: 'fitness', ringSlots: ['work','self','sport'], workoutTarget: 5, selfTargetMinutes: 120, templates: [{ name: 'Deep work', type: 'Саморазвитие: Проект', start: '20:00', end: '22:00', note: 'Глубокая работа над задачей', icon: '🧠' }] },
+    { id: 'minimal', name: 'Минимализм', icon: '◌', theme: 'graphite', ringSlots: ['work','sport','self'], workoutTarget: 2, selfTargetMinutes: 30, templates: [] }
   ];
   const MOODS = [
     ['🔥', 'мощно'],
@@ -274,7 +282,10 @@
         { id: 'cat-ableton', name: 'Ableton', icon: '🎛️', kind: 'self', targetMinutes: 45, inRings: true }
       ],
       ringSlots: ['work', 'sport', 'self'],
-      homeWidgets: { todayCenter: true, planner: true, weeklyRings: true, eveningReport: true, timeline: true, quickTemplates: true, insights: true, mood: true },
+      homeWidgets: { todayCenter: true, miniMode: true, planner: true, weeklyRings: true, eveningReport: true, timeline: true, quickTemplates: true, insights: true, mood: true },
+      profiles: DEFAULT_PROFILES.map((profile) => ({ ...profile, workConfig: cloneWorkConfig(DEFAULT_WORK_CONFIG) })),
+      activeProfileId: 'work',
+      miniMode: false,
       customTemplates: [],
       eveningReports: {},
       sportTypes: [],
@@ -321,6 +332,9 @@
       customCategories: Array.isArray(parsed.customCategories) ? parsed.customCategories : base.customCategories,
       ringSlots: Array.isArray(parsed.ringSlots) && parsed.ringSlots.length === 3 ? parsed.ringSlots : base.ringSlots,
       homeWidgets: { ...base.homeWidgets, ...(parsed.homeWidgets || {}) },
+      profiles: Array.isArray(parsed.profiles) && parsed.profiles.length ? parsed.profiles.map((profile) => ({ ...profile, workConfig: cloneWorkConfig(profile.workConfig || workConfig) })) : base.profiles,
+      activeProfileId: parsed.activeProfileId || base.activeProfileId,
+      miniMode: Boolean(parsed.miniMode),
       customTemplates: Array.isArray(parsed.customTemplates) ? parsed.customTemplates : base.customTemplates,
       eveningReports: parsed.eveningReports || {},
       sportTypes: Array.isArray(parsed.sportTypes) ? parsed.sportTypes : base.sportTypes,
@@ -988,6 +1002,8 @@
     renderDesignSettings();
     renderEnhancementSettings();
     renderHistoryDays();
+    renderMiniMode();
+    renderProfileSettings();
     renderReportPreview(false);
   }
 
@@ -2444,6 +2460,164 @@
     }).join('');
   }
 
+
+  function profileList() {
+    if (!Array.isArray(state.profiles) || !state.profiles.length) {
+      state.profiles = DEFAULT_PROFILES.map((profile) => ({ ...profile, workConfig: cloneWorkConfig(state.workConfig || DEFAULT_WORK_CONFIG) }));
+    }
+    return state.profiles;
+  }
+
+  function activeProfile() {
+    return profileList().find((profile) => profile.id === state.activeProfileId) || profileList()[0];
+  }
+
+  function profileSnapshot(name = '', icon = '') {
+    return {
+      id: uid(),
+      name: name || 'Новый профиль',
+      icon: icon || '✨',
+      theme: state.theme || 'system',
+      workConfig: cloneWorkConfig(state.workConfig),
+      ringSlots: [...ringSlotIds()],
+      workoutTarget: Number(activeConfig().targetWorkoutsPerWeek || 0),
+      selfTargetMinutes: selfDevTargetMinutes(),
+      templates: [...(state.customTemplates || [])],
+      widgets: { ...(state.homeWidgets || {}) },
+      ui: { ...(state.ui || {}) }
+    };
+  }
+
+  function renderProfileSettings() {
+    const box = $('#profileList');
+    if (!box) return;
+    box.innerHTML = profileList().map((profile) => {
+      const active = profile.id === state.activeProfileId;
+      const cfg = cloneWorkConfig(profile.workConfig || state.workConfig);
+      const ringLabels = (profile.ringSlots || ['work','sport','self']).map((slot) => ringLabel(slot)).join(' · ');
+      return `<article class="profile-card ${active ? 'active' : ''}">
+        <div class="profile-head"><span>${escapeHtml(profile.icon || '✨')}</span><div><strong>${escapeHtml(profile.name)}</strong><p>${escapeHtml(THEME_OPTIONS.find(([v]) => v === profile.theme)?.[1] || profile.theme || 'system')}</p></div></div>
+        <p>${formatDate(cfg.startDate)} — ${formatDate(cfg.endDate)} · спорт ${Number(profile.workoutTarget ?? cfg.targetWorkoutsPerWeek ?? 0)}/нед.</p>
+        <p class="muted small">Кольца: ${escapeHtml(ringLabels)}</p>
+        <div class="button-row"><button class="mini-btn" data-profile-apply="${escapeHtml(profile.id)}">Применить</button><button class="mini-btn" data-profile-save="${escapeHtml(profile.id)}">Обновить</button>${profile.id.startsWith('custom-') ? `<button class="mini-btn" data-profile-del="${escapeHtml(profile.id)}">Удалить</button>` : ''}</div>
+      </article>`;
+    }).join('');
+  }
+
+  function applyProfile(profileId) {
+    const profile = profileList().find((p) => p.id === profileId);
+    if (!profile) return toast('Профиль не найден.');
+    state.activeProfileId = profile.id;
+    state.theme = profile.theme || state.theme || 'system';
+    state.workConfig = cloneWorkConfig(profile.workConfig || state.workConfig);
+    state.workConfig.targetWorkoutsPerWeek = Number(profile.workoutTarget ?? state.workConfig.targetWorkoutsPerWeek ?? 3);
+    state.ringSlots = Array.isArray(profile.ringSlots) && profile.ringSlots.length === 3 ? [...profile.ringSlots] : state.ringSlots;
+    state.customTemplates = Array.isArray(profile.templates) ? [...profile.templates] : state.customTemplates;
+    state.homeWidgets = { ...(state.homeWidgets || {}), ...(profile.widgets || {}) };
+    state.ui = { ...(state.ui || {}), ...(profile.ui || {}) };
+    if (profile.selfTargetMinutes !== undefined) state.ui.selfDevTargetMinutes = Number(profile.selfTargetMinutes || 0);
+    saveState();
+    renderAll();
+    toast(`Профиль «${profile.name}» применён.`);
+  }
+
+  function saveIntoProfile(profileId) {
+    const list = profileList();
+    const index = list.findIndex((p) => p.id === profileId);
+    if (index < 0) return toast('Профиль не найден.');
+    const previous = list[index];
+    list[index] = { ...profileSnapshot(previous.name, previous.icon), id: previous.id };
+    state.profiles = list;
+    state.activeProfileId = previous.id;
+    saveState(); renderAll(); toast('Профиль обновлён текущими настройками.');
+  }
+
+  function duplicateActiveProfile() {
+    const base = activeProfile();
+    const copy = { ...profileSnapshot(`${base.name} · копия`, base.icon || '✨'), id: `custom-${uid()}` };
+    state.profiles = [...profileList(), copy];
+    state.activeProfileId = copy.id;
+    saveState(); renderAll(); toast('Создана копия профиля.');
+  }
+
+  function renderMiniMode() {
+    const card = $('#miniTodayCard');
+    if (!card) return;
+    card.classList.toggle('is-enabled', Boolean(state.miniMode));
+    document.body.dataset.mini = state.miniMode ? 'on' : 'off';
+    const st = dayStatus(state.selectedDate);
+    const sports = weekEntriesFrom(sportEntries(), state.selectedDate).length;
+    const target = Number(activeConfig().targetWorkoutsPerWeek || 0);
+    const self = minutesForEntries(entriesForCategoryId('self', state.selectedDate));
+    $('#miniWorkText').textContent = `${hm(st.work)} / ${hm(st.plan.minutes)}`;
+    $('#miniSportText').textContent = target ? `${sports} / ${target}` : `${sports}`;
+    $('#miniSelfText').textContent = `${hm(self)}`;
+    $('#miniCloseText').textContent = getMeta(state.selectedDate).closedAt ? 'закрыт' : 'закрыть';
+  }
+
+  function reportPlainText() {
+    const stats = periodStats();
+    const sports = sportStats();
+    const self = selfDevStats();
+    const best = stats.best.date ? `${formatDate(stats.best.date, { year: 'numeric' })} — ${hm(stats.best.minutes, false)}` : 'нет данных';
+    return [
+      'LifeOS Report',
+      `Период: ${periodStart()} — ${periodEnd()}`,
+      `Работа: ${hm(stats.work, false)} / ${hm(stats.plan, false)} (${stats.pct}%)`,
+      `Спорт: ${sports.entries.length} тренировок · ${hm(sports.total, false)}`,
+      `Саморазвитие: ${hm(self.total, false)} · ${self.entries.length} сессий`,
+      `Лучший день: ${best}`,
+      `Полных рабочих дней: ${stats.fullDays}`,
+      `Частичных рабочих дней: ${stats.partialDays}`,
+      `Пустых рабочих дней: ${stats.missedDays}`,
+      `Самая длинная серия: ${longestFullWorkStreak()} дней`,
+      `Активный профиль: ${activeProfile()?.name || 'Рабочий режим'}`
+    ].join('\n');
+  }
+
+  function longestFullWorkStreak() {
+    let best = 0;
+    let cur = 0;
+    datesBetween(periodStart(), periodEnd()).forEach((date) => {
+      const st = dayStatus(date);
+      if (!st.plan.minutes) return;
+      if (st.status === 'done') { cur += 1; best = Math.max(best, cur); }
+      else cur = 0;
+    });
+    return best;
+  }
+
+  function reportJsonPayload() {
+    const stats = periodStats();
+    return {
+      app: 'LifeOS',
+      version: APP_VERSION,
+      generatedAt: new Date().toISOString(),
+      activeProfile: activeProfile(),
+      period: { start: periodStart(), end: periodEnd() },
+      summary: {
+        plannedWorkMinutes: stats.plan,
+        actualWorkMinutes: stats.work,
+        completionPercent: stats.pct,
+        fullWorkDays: stats.fullDays,
+        partialWorkDays: stats.partialDays,
+        missedWorkDays: stats.missedDays,
+        longestFullWorkStreak: longestFullWorkStreak(),
+        sportSessions: sportEntries().length,
+        selfDevelopmentMinutes: selfDevStats().total
+      },
+      entries: state.entries,
+      books: state.books || [],
+      courses: state.courses || [],
+      projects: state.projects || []
+    };
+  }
+
+  function reportCsv() {
+    const rows = [['metric','value'], ...Object.entries(reportJsonPayload().summary).map(([k,v]) => [k, v])];
+    return rows.map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+  }
+
   function renderReportPreview(force = true) {
     if (!force && !lastReportHtml) {
       $('#reportPreview').innerHTML = '<div class="empty-state">Нажми «Сформировать отчёт», чтобы увидеть итог периода.</div>';
@@ -2746,6 +2920,25 @@
         state.selfDevTypes = (state.selfDevTypes || []).filter((type) => type !== target.dataset.selfTypeDel);
         saveState(); renderAll(); toast('Вариант саморазвития удалён. Старые записи сохранены.');
       }
+      if (target.dataset.profileApply) {
+        applyProfile(target.dataset.profileApply);
+      }
+      if (target.dataset.profileSave) {
+        saveIntoProfile(target.dataset.profileSave);
+      }
+      if (target.dataset.profileDel) {
+        state.profiles = profileList().filter((profile) => profile.id !== target.dataset.profileDel);
+        if (!state.profiles.some((p) => p.id === state.activeProfileId)) state.activeProfileId = state.profiles[0]?.id || 'work';
+        saveState(); renderAll(); toast('Профиль удалён.');
+      }
+      if (target.dataset.miniAction) {
+        const action = target.dataset.miniAction;
+        if (action === 'work') fillWorkDay();
+        if (action === 'sport') addSportEntry({ date: state.selectedDate, start: '18:00', end: '19:00', activity: 'Тренировка', intensity: 'Средняя', calories: 0, note: 'Мини-отметка спорта' });
+        if (action === 'self') addSelfEntry({ date: state.selectedDate, start: '20:00', end: '21:00', activity: 'Саморазвитие', note: 'Мини-отметка саморазвития' });
+        if (action === 'quick') { $(`.tab[data-tab="journal"]`)?.click(); toast('Открыл журнал для быстрой записи.'); }
+        if (action === 'close') { getMeta().closedAt = new Date().toISOString(); saveState(); renderAll(); toast('День закрыт.'); }
+      }
     });
 
     document.addEventListener('change', (event) => {
@@ -2947,6 +3140,12 @@
 
     $('#generateReportBtn').addEventListener('click', () => { lastReportHtml = buildReportHtml(false); renderReportPreview(true); toast('Отчёт сформирован.'); });
     $('#downloadReportBtn').addEventListener('click', () => downloadFile(`lifeos-report-${todayKey()}.html`, buildReportHtml(true), 'text/html;charset=utf-8'));
+    $('#downloadReportCsvBtn')?.addEventListener('click', () => downloadFile(`lifeos-report-summary-${todayKey()}.csv`, reportCsv(), 'text/csv;charset=utf-8'));
+    $('#downloadReportJsonBtn')?.addEventListener('click', () => downloadFile(`lifeos-report-summary-${todayKey()}.json`, JSON.stringify(reportJsonPayload(), null, 2), 'application/json;charset=utf-8'));
+    $('#copyReportTextBtn')?.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(reportPlainText()); toast('Текст отчёта скопирован.'); }
+      catch { downloadFile(`lifeos-report-${todayKey()}.txt`, reportPlainText(), 'text/plain;charset=utf-8'); toast('Буфер недоступен — скачал TXT.'); }
+    });
     $('#downloadTemplateBtn').addEventListener('click', () => downloadFile('lifeos-empty-template.json', JSON.stringify(defaultState(), null, 2), 'application/json;charset=utf-8'));
     $('#importJsonInput').addEventListener('change', async (e) => {
       const file = e.target.files?.[0];
@@ -2991,6 +3190,11 @@
       $('#tplStart').value = '20:00';
       $('#tplEnd').value = '20:30';
     });
+
+    $('#saveProfileBtn')?.addEventListener('click', () => saveIntoProfile(state.activeProfileId || activeProfile().id));
+    $('#duplicateProfileBtn')?.addEventListener('click', duplicateActiveProfile);
+    $('#toggleMiniModeBtn')?.addEventListener('click', () => { state.miniMode = !state.miniMode; saveState(); renderAll(); toast(state.miniMode ? 'Мини-режим включён.' : 'Мини-режим выключен.'); });
+    $('#miniModeOffBtn')?.addEventListener('click', () => { state.miniMode = false; saveState(); renderAll(); });
 
     $('#enableNotificationsBtn').addEventListener('click', requestNotificationPermission);
     $('#runDiagnosticsBtn')?.addEventListener('click', () => renderDiagnostics().then(() => toast('Диагностика обновлена.')));
