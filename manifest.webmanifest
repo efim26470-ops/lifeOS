@@ -1,7 +1,7 @@
 {
-  "name": "LifeOS — Work, Sport & Day Control",
+  "name": "LifeOS — Personal Day Control",
   "short_name": "LifeOS",
-  "description": "Локальная PWA-панель: настраиваемый график работы, спорт, привычки, финансы, проекты, отчёты и бесконечные ачивки.",
+  "description": "Локальная PWA-панель для графика работы, спорта, привычек, денег, проектов, отчётов и бесконечных ачивок.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -11,7 +11,7 @@
     "browser"
   ],
   "background_color": "#0f172a",
-  "theme_color": "#2563eb",
+  "theme_color": "#111827",
   "orientation": "portrait",
   "lang": "ru",
   "categories": [

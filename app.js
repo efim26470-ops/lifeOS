@@ -1,8 +1,8 @@
 (() => {
   'use strict';
 
-  const KEY = 'lifeos.v5.configurable';
-  const LEGACY_KEYS = ['lifeos.v4.final', 'lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
+  const KEY = 'lifeos.v7.design';
+  const LEGACY_KEYS = ['lifeos.v5.configurable', 'lifeos.v4.final', 'lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
   const DEFAULT_START = '2026-07-03';
   const DEFAULT_END = '2026-08-31';
   const DAY_LABELS = [
@@ -126,6 +126,42 @@
     }
   }
 
+  function idbOpen() {
+    return new Promise((resolve, reject) => {
+      if (!('indexedDB' in window)) return reject(new Error('IndexedDB unavailable'));
+      const request = indexedDB.open('LifeOSDatabase', 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains('state')) db.createObjectStore('state');
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error('IndexedDB open failed'));
+      request.onblocked = () => reject(new Error('IndexedDB blocked'));
+    });
+  }
+
+  async function idbGet(key = KEY) {
+    const db = await idbOpen();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('state', 'readonly');
+      const request = tx.objectStore('state').get(key);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error || new Error('IndexedDB get failed'));
+      tx.oncomplete = () => db.close();
+      tx.onerror = () => db.close();
+    });
+  }
+
+  async function idbSet(value, key = KEY) {
+    const db = await idbOpen();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('state', 'readwrite');
+      tx.objectStore('state').put(value, key);
+      tx.oncomplete = () => { db.close(); resolve(true); };
+      tx.onerror = () => { db.close(); reject(tx.error || new Error('IndexedDB set failed')); };
+    });
+  }
+
   function storageGet(key = KEY) {
     try {
       if (storageDriver === 'localStorage') return localStorage.getItem(key);
@@ -162,14 +198,12 @@
     const banner = $('#storageBanner');
     const text = $('#storageBannerText');
     if (!banner || !text) return;
-    if (storageDriver === 'localStorage' || storageDriver === 'cookie') {
+    if (storageDriver === 'localStorage' || storageDriver === 'cookie' || storageDriver === 'sessionStorage') {
       banner.hidden = true;
       return;
     }
     banner.hidden = false;
-    text.textContent = storageDriver === 'sessionStorage'
-      ? 'localStorage заблокирован браузером. LifeOS использует sessionStorage: данные сохранятся в этой вкладке. Для надёжности делай JSON-бэкап.'
-      : 'Постоянное хранилище недоступно. Данные держатся только до закрытия вкладки. Экспортируй JSON перед выходом.';
+    text.textContent = 'Постоянное хранилище браузера ограничено. LifeOS сохраняет резервную копию в IndexedDB, но на всякий случай делай JSON-бэкап.';
   }
 
   function cloneWorkConfig(config = DEFAULT_WORK_CONFIG) {
@@ -264,7 +298,9 @@
 
   function saveState() {
     state.updatedAt = new Date().toISOString();
-    storageSet(JSON.stringify(state));
+    const payload = JSON.stringify(state);
+    storageSet(payload);
+    idbSet(payload).catch(() => { /* IndexedDB is an optional persistent backup. */ });
   }
 
   function toDate(key) {
@@ -610,8 +646,8 @@
       return `
         <div class="schedule-row" data-day="${day}">
           <label class="schedule-toggle"><input type="checkbox" id="${prefix}Day${day}" ${item.enabled ? 'checked' : ''}> <strong>${label}</strong></label>
-          <input class="input" type="time" id="${prefix}Start${day}" value="${escapeHtml(item.start)}" step="60">
-          <input class="input" type="time" id="${prefix}End${day}" value="${escapeHtml(item.end)}" step="60">
+          <label class="schedule-time"><span>Начало</span><input class="input" type="time" id="${prefix}Start${day}" value="${escapeHtml(item.start)}" step="60"></label>
+          <label class="schedule-time"><span>Конец</span><input class="input" type="time" id="${prefix}End${day}" value="${escapeHtml(item.end)}" step="60"></label>
         </div>
       `;
     }).join('');
@@ -1715,7 +1751,14 @@
     saveState(); renderAll(); toast('Фокус-сессия сохранена.');
   }
 
+  function updateStandaloneClass() {
+    const standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+    document.documentElement.classList.toggle('pwa-standalone', Boolean(standalone));
+  }
+
   function initPwa() {
+    updateStandaloneClass();
+    if (window.matchMedia) window.matchMedia('(display-mode: standalone)').addEventListener?.('change', updateStandaloneClass);
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch((error) => console.warn('SW registration failed', error));
     }
@@ -1737,7 +1780,27 @@
     // Миграция уже выполняется в loadState через текущий storageDriver.
   }
 
-  function bootstrap() {
+  async function restoreFromIndexedDbIfNeeded() {
+    try {
+      const hasPrimaryState = Boolean(storageGet(KEY));
+      if (hasPrimaryState) {
+        idbSet(JSON.stringify(state)).catch(() => {});
+        return;
+      }
+      const raw = await idbGet(KEY);
+      if (!raw) return;
+      const restored = normalizeLoadedState(JSON.parse(raw));
+      state = restored;
+      storageSet(JSON.stringify(state));
+      storageDriver = storageDriver === 'memory' && canUseWebStorage('sessionStorage') ? 'sessionStorage' : storageDriver;
+      storageOk = storageDriver !== 'memory';
+    } catch (error) {
+      console.warn('IndexedDB restore skipped', error);
+    }
+  }
+
+  async function bootstrap() {
+    await restoreFromIndexedDbIfNeeded();
     updateStorageBanner();
     migrateOldData();
     applyTheme();

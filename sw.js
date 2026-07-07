@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifeos-v6-visual-fixes';
+const CACHE_NAME = 'lifeos-v7-design-icons';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -14,29 +14,48 @@ const CORE_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS)).then(() => self.skipWaiting()));
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(CORE_ASSETS))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))).then(() => self.clients.claim())
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
+      .then(() => self.clients.claim())
   );
 });
 
+async function networkFirst(request) {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const fresh = await fetch(request, { cache: 'no-store' });
+    if (fresh && fresh.status === 200 && fresh.type !== 'opaque') {
+      cache.put(request, fresh.clone());
+    }
+    return fresh;
+  } catch (error) {
+    const cached = await cache.match(request);
+    return cached || cache.match('./index.html');
+  }
+}
+
+async function cacheFirst(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  const fresh = await fetch(request);
+  if (fresh && fresh.status === 200 && fresh.type !== 'opaque') cache.put(request, fresh.clone());
+  return fresh;
+}
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request)
-        .then((response) => {
-          if (response && response.status === 200 && response.type !== 'opaque') {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() => cached || caches.match('./index.html'));
-      return cached || fetchPromise;
-    })
-  );
+  const url = new URL(event.request.url);
+  const isCore = CORE_ASSETS.some((asset) => url.pathname.endsWith(asset.replace('./', '/')) || url.pathname.endsWith(asset.replace('./', '')));
+  const isNavigation = event.request.mode === 'navigate';
+  event.respondWith((isNavigation || isCore) ? networkFirst(event.request) : cacheFirst(event.request));
 });
