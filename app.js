@@ -1,8 +1,8 @@
 (() => {
   'use strict';
 
-  const KEY = 'lifeos.v7.design';
-  const LEGACY_KEYS = ['lifeos.v5.configurable', 'lifeos.v4.final', 'lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
+  const KEY = 'lifeos.v8.rings';
+  const LEGACY_KEYS = ['lifeos.v7.design', 'lifeos.v5.configurable', 'lifeos.v4.final', 'lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
   const DEFAULT_START = '2026-07-03';
   const DEFAULT_END = '2026-08-31';
   const DAY_LABELS = [
@@ -22,6 +22,24 @@
       6: { enabled: true, start: '10:00', end: '14:00' }
     }
   };
+  const THEME_OPTIONS = [
+    ['system', 'Системная', 'Автоматически под устройство'],
+    ['light', 'iOS Light', 'Чистая светлая тема'],
+    ['dark', 'iOS Dark', 'Тёмный режим'],
+    ['midnight', 'Midnight', 'Глубокий синий и фиолетовый'],
+    ['aurora', 'Aurora', 'Светлая северная палитра'],
+    ['fitness', 'Apple Fitness', 'Кольца, энергия, контраст'],
+    ['music', 'Apple Music', 'Градиенты и неоновые акценты'],
+    ['journal', 'Apple Journal', 'Тёплая дневниковая тема'],
+    ['ios7', 'iOS 7 Frost', 'Лёгкое матовое стекло'],
+    ['ios13', 'iOS 13', 'Системный серо-синий стиль'],
+    ['ios17', 'iOS 17 Pro', 'Глубина, blur, мягкие карточки'],
+    ['ios18', 'iOS 18 Liquid', 'Насыщенный liquid glass'],
+    ['aqua', 'Classic Aqua', 'Старый macOS Aqua вайб'],
+    ['graphite', 'Graphite', 'Строгий графитовый стиль'],
+    ['ipod', 'iPod', 'Белый минимализм и синий акцент'],
+    ['snitch', 'Стукач', 'Пасхальная тема']
+  ];
   const MOODS = [
     ['🔥', 'мощно'],
     ['🙂', 'нормально'],
@@ -32,9 +50,18 @@
   const BASE_TYPES = [
     'Работа', 'Учёба', 'GitHub-проект', 'Фокус-сессия', 'Обед', 'Дорога', 'Телефон', 'Отдых',
     'Спорт', 'Прогулка', 'Здоровье', 'Домашние дела', 'Покупки', 'Встреча', 'Документы',
+    'Саморазвитие', 'Саморазвитие: Проект', 'Саморазвитие: Книга', 'Саморазвитие: Курс', 'Саморазвитие: Практика',
     'Творчество', 'Музыка', 'Семья', 'Друзья', 'Сон', 'Прочее', 'Другое'
   ];
   const BASE_SPORT_TYPES = ['Зал', 'Кардио', 'Бег', 'Прогулка', 'Растяжка', 'Футбол', 'Велосипед', 'Бассейн', 'Домашняя тренировка', 'Свой спорт'];
+  const BASE_SELF_TYPES = ['Проект', 'Книга', 'Курс', 'Практика', 'Конспект', 'Язык', 'Кодинг', 'Ableton', 'Финансы', 'Свой вариант'];
+  const SELF_QUICK_TEMPLATES = [
+    { activity: 'Проект', start: '20:00', end: '21:00', note: 'Работа над личным проектом', icon: '🛠️' },
+    { activity: 'Книга', start: '21:00', end: '21:40', note: 'Чтение и заметки', icon: '📖' },
+    { activity: 'Курс', start: '19:30', end: '20:30', note: 'Курс / урок / лекция', icon: '🎓' },
+    { activity: 'Кодинг', start: '18:30', end: '20:00', note: 'Кодинг и практика', icon: '💻' },
+    { activity: 'Ableton', start: '21:00', end: '22:00', note: 'Музыка / Ableton / аранжировка', icon: '🎛️' }
+  ];
   const SPORT_QUICK_TEMPLATES = [
     { activity: 'Зал', start: '18:00', end: '19:15', intensity: 'Высокая', calories: 450, note: 'Силовая тренировка', icon: '🏋️' },
     { activity: 'Бег', start: '19:00', end: '19:40', intensity: 'Высокая', calories: 380, note: 'Бег / кардио', icon: '🏃' },
@@ -226,15 +253,17 @@
   function defaultState() {
     const workConfig = cloneWorkConfig(DEFAULT_WORK_CONFIG);
     return {
-      version: 5,
+      version: 8,
       onboardingDone: false,
       workConfig,
       theme: 'system',
+      ui: { glassOpacity: 68, glassBlur: 20, animationLevel: 'normal', selfDevTargetMinutes: 60 },
       selectedDate: clampDate(todayKey(), workConfig),
       entries: [],
       dayMeta: {},
       customTypes: ['Документы', 'Встреча', 'Покупки'],
       sportTypes: [],
+      selfDevTypes: [],
       habits: DEFAULT_HABITS.map((h) => ({ ...h })),
       habitChecks: {},
       goals: [
@@ -259,7 +288,8 @@
     return {
       ...base,
       ...parsed,
-      version: 5,
+      version: 8,
+      ui: { ...base.ui, ...(parsed.ui || {}) },
       onboardingDone: Boolean(parsed.onboardingDone),
       workConfig,
       selectedDate,
@@ -267,6 +297,7 @@
       dayMeta: parsed.dayMeta || {},
       customTypes: Array.isArray(parsed.customTypes) ? parsed.customTypes : base.customTypes,
       sportTypes: Array.isArray(parsed.sportTypes) ? parsed.sportTypes : base.sportTypes,
+      selfDevTypes: Array.isArray(parsed.selfDevTypes) ? parsed.selfDevTypes : base.selfDevTypes,
       habits: Array.isArray(parsed.habits) && parsed.habits.length ? parsed.habits : base.habits,
       habitChecks: parsed.habitChecks || {},
       goals: Array.isArray(parsed.goals) && parsed.goals.length ? parsed.goals : base.goals,
@@ -573,10 +604,11 @@
     const stats = periodStats();
     const focus = state.focusSessions.reduce((sum, s) => sum + (s.minutes || 0), 0);
     const sport = sportEntries().reduce((sum, entry) => sum + Math.max(0, timeToMinutes(entry.end) - timeToMinutes(entry.start)), 0);
+    const self = selfDevEntries().reduce((sum, entry) => sum + Math.max(0, timeToMinutes(entry.end) - timeToMinutes(entry.start)), 0);
     const notes = Object.values(state.dayMeta).filter((m) => m.note && m.note.trim()).length;
     const habitChecks = Object.values(state.habitChecks).reduce((sum, checks) => sum + Object.values(checks || {}).filter(Boolean).length, 0);
     const backups = Number(localStorageSafeGet('lifeos.lastBackupCount') || 0);
-    return Math.round(stats.fullDays * 90 + stats.partialDays * 35 + Math.floor(focus / 25) * 25 + Math.floor(sport / 30) * 12 + notes * 10 + habitChecks * 8 + backups * 40);
+    return Math.round(stats.fullDays * 90 + stats.partialDays * 35 + Math.floor(focus / 25) * 25 + Math.floor(sport / 30) * 12 + Math.floor(self / 30) * 14 + notes * 10 + habitChecks * 8 + backups * 40);
   }
 
   function levelFromXp(xp) {
@@ -599,6 +631,7 @@
     $('#selectedDate').value = state.selectedDate;
     $('#entryDate').value = state.selectedDate;
     if ($('#sportDate')) $('#sportDate').value = state.selectedDate;
+    if ($('#selfDate')) $('#selfDate').value = state.selectedDate;
     saveState();
     renderAll();
   }
@@ -633,8 +666,14 @@
   }
 
   function applyTheme() {
-    document.body.dataset.theme = state.theme || 'system';
-    if ($('#themeSelect')) $('#themeSelect').value = state.theme || 'system';
+    const theme = state.theme || 'system';
+    const ui = state.ui || {};
+    document.body.dataset.theme = theme;
+    document.body.dataset.animation = ui.animationLevel || 'normal';
+    document.documentElement.style.setProperty('--glass-alpha', String(Math.max(35, Math.min(92, Number(ui.glassOpacity ?? 68))) / 100));
+    document.documentElement.style.setProperty('--blur', `${Math.max(6, Math.min(34, Number(ui.glassBlur ?? 20)))}px`);
+    if ($('#themeSelect')) $('#themeSelect').value = theme;
+    if ($('#settingsThemeSelect')) $('#settingsThemeSelect').value = theme;
   }
 
   function renderScheduleGrid(containerSelector, prefix, config = state.workConfig) {
@@ -706,6 +745,7 @@
     updateStorageBanner();
     renderOnboarding();
     renderHero();
+    renderRings();
     renderDashboard();
     renderWork();
     renderDay();
@@ -715,6 +755,7 @@
     renderHabits();
     renderFocus();
     renderSport();
+    renderSelfDev();
     renderMoney();
     renderProjects();
     renderAchievements();
@@ -723,6 +764,8 @@
     renderCustomTypeSettings();
     renderEntryTypeOptions();
     renderSportTypeOptions();
+    renderSelfTypeOptions();
+    renderDesignSettings();
     renderReportPreview(false);
   }
 
@@ -747,7 +790,7 @@
   }
 
   function syncDateInputs() {
-    ['#selectedDate', '#entryDate', '#sportDate'].forEach((selector) => {
+    ['#selectedDate', '#entryDate', '#sportDate', '#selfDate'].forEach((selector) => {
       const input = $(selector);
       if (!input) return;
       input.min = periodStart();
@@ -907,7 +950,7 @@
       <article class="entry-card" data-entry-id="${entry.id}">
         <div>
           <strong>${escapeHtml(entry.type)} · ${entry.start}–${entry.end} · ${hm(minutes)}</strong>
-          <p>${formatDate(entry.date)}${entry.auto ? ' · авто-зачёт' : ''}${entry.sportActivity ? ' · ' + escapeHtml(entry.sportActivity) : ''}${entry.intensity ? ' · ' + escapeHtml(entry.intensity) : ''}${entry.calories ? ' · ' + Number(entry.calories) + ' ккал' : ''}${entry.note ? ' · ' + escapeHtml(entry.note) : ''}</p>
+          <p>${formatDate(entry.date)}${entry.auto ? ' · авто-зачёт' : ''}${entry.sportActivity ? ' · ' + escapeHtml(entry.sportActivity) : ''}${entry.selfDevActivity ? ' · ' + escapeHtml(entry.selfDevActivity) : ''}${entry.intensity ? ' · ' + escapeHtml(entry.intensity) : ''}${entry.calories ? ' · ' + Number(entry.calories) + ' ккал' : ''}${entry.note ? ' · ' + escapeHtml(entry.note) : ''}</p>
         </div>
         ${compact ? '' : `<div class="entry-actions"><button class="mini-btn" data-duplicate-entry="${entry.id}">Дубль</button><button class="mini-btn" data-delete-entry="${entry.id}">Удалить</button></div>`}
       </article>
@@ -1027,6 +1070,77 @@
 
   function sportEntries() {
     return state.entries.filter((entry) => isSportType(entry.type) || entry.sportActivity);
+  }
+
+  function allSelfTypes() {
+    const set = new Set([...BASE_SELF_TYPES, ...(state.selfDevTypes || [])]);
+    selfDevEntries().forEach((entry) => {
+      if (entry.selfDevActivity) set.add(entry.selfDevActivity);
+      else if (entry.type.startsWith('Саморазвитие: ')) set.add(entry.type.replace('Саморазвитие: ', ''));
+    });
+    return Array.from(set).filter(Boolean).sort((a, b) => a.localeCompare(b, 'ru'));
+  }
+
+  function isSelfDevType(type) {
+    const normalized = normalizeType(type).toLowerCase();
+    return normalized === 'саморазвитие' || normalized.includes('саморазвит') || normalized.includes('книга') || normalized.includes('курс') || normalized.includes('проект') || normalized.includes('кодинг');
+  }
+
+  function selfDevEntries() {
+    return state.entries.filter((entry) => isSelfDevType(entry.type) || entry.selfDevActivity);
+  }
+
+  function selfDevTargetMinutes() {
+    return Math.max(0, Number(state.ui?.selfDevTargetMinutes ?? 60));
+  }
+
+  function weekEntriesFrom(entries, date = state.selectedDate) {
+    return entries.filter((entry) => {
+      const diff = Math.floor((toDate(date) - toDate(entry.date)) / (24 * 60 * 60 * 1000));
+      return diff >= 0 && diff < 7;
+    });
+  }
+
+  function ringStats(date = state.selectedDate) {
+    const st = dayStatus(date);
+    const sportAll = sportEntries();
+    const selfAll = selfDevEntries();
+    const sportToday = sportAll.filter((entry) => entry.date === date);
+    const selfToday = selfAll.filter((entry) => entry.date === date);
+    const sportWeek = weekEntriesFrom(sportAll, date);
+    const selfTodayMinutes = selfToday.reduce((sum, entry) => sum + Math.max(0, timeToMinutes(entry.end) - timeToMinutes(entry.start)), 0);
+    const sportTarget = Math.max(1, Number(activeConfig().targetWorkoutsPerWeek || 1));
+    const workPct = st.plan.minutes ? percent(st.work, st.plan.minutes) : 100;
+    const sportPct = percent(sportWeek.length, sportTarget);
+    const selfTarget = Math.max(1, selfDevTargetMinutes());
+    const selfPct = percent(selfTodayMinutes, selfTarget);
+    return {
+      work: { label: 'Работа', pct: workPct, value: `${hm(st.work)} / ${hm(st.plan.minutes)}`, sub: st.plan.minutes ? st.plan.label : 'выходной' },
+      sport: { label: 'Тренировка', pct: sportPct, value: `${sportWeek.length}/${sportTarget} нед.`, sub: sportToday.length ? `${sportToday.length} сегодня` : 'сегодня пусто' },
+      self: { label: 'Саморазвитие', pct: selfPct, value: `${hm(selfTodayMinutes)} / ${hm(selfTarget)}`, sub: selfToday.length ? `${selfToday.length} сесс.` : 'книги, курсы, проекты' }
+    };
+  }
+
+  function renderRings() {
+    const ring = $('#tripleRings');
+    const list = $('#ringsList');
+    if (!ring || !list) return;
+    const data = ringStats();
+    const work = Math.min(100, data.work.pct);
+    const sport = Math.min(100, data.sport.pct);
+    const self = Math.min(100, data.self.pct);
+    ring.style.setProperty('--work-pct', `${work}%`);
+    ring.style.setProperty('--sport-pct', `${sport}%`);
+    ring.style.setProperty('--self-pct', `${self}%`);
+    const avg = Math.round((work + sport + self) / 3);
+    $('#ringsCenterLabel').textContent = `${avg}%`;
+    list.innerHTML = [data.work, data.sport, data.self].map((item, index) => `
+      <div class="ring-row ring-${index}">
+        <span class="ring-dot"></span>
+        <div><strong>${escapeHtml(item.label)}</strong><p>${escapeHtml(item.sub)}</p></div>
+        <b>${escapeHtml(item.value)}</b>
+      </div>
+    `).join('');
   }
 
   function renderJournal() {
@@ -1162,6 +1276,63 @@
     `).join('');
   }
 
+  function selfDevStats() {
+    const entries = selfDevEntries();
+    const total = entries.reduce((sum, entry) => sum + Math.max(0, timeToMinutes(entry.end) - timeToMinutes(entry.start)), 0);
+    const today = entries.filter((entry) => entry.date === state.selectedDate).reduce((sum, entry) => sum + Math.max(0, timeToMinutes(entry.end) - timeToMinutes(entry.start)), 0);
+    const weekEntries = weekEntriesFrom(entries);
+    const week = weekEntries.reduce((sum, entry) => sum + Math.max(0, timeToMinutes(entry.end) - timeToMinutes(entry.start)), 0);
+    const map = new Map();
+    entries.forEach((entry) => {
+      const activity = entry.selfDevActivity || (entry.type.startsWith('Саморазвитие: ') ? entry.type.replace('Саморазвитие: ', '') : entry.type);
+      const mins = Math.max(0, timeToMinutes(entry.end) - timeToMinutes(entry.start));
+      map.set(activity, (map.get(activity) || 0) + mins);
+    });
+    const favorite = Array.from(map.entries()).sort((a, b) => b[1] - a[1])[0];
+    return { entries, total, today, week, weekEntries, favorite, byActivity: map };
+  }
+
+  function renderSelfDev() {
+    const box = $('#selfStats');
+    if (!box) return;
+    $('#selfDate').value = state.selectedDate;
+    renderSelfTypeOptions();
+    renderSelfQuickGrid();
+    const stats = selfDevStats();
+    const target = selfDevTargetMinutes();
+    const metrics = [
+      ['Всего', hm(stats.total), `${stats.entries.length} сессий`],
+      ['Сегодня', hm(stats.today), `${percent(stats.today, Math.max(1, target))}% цели`],
+      ['За 7 дней', hm(stats.week), `${stats.weekEntries.length} сесс.`],
+      ['Дневная цель', target ? hm(target) : 'выкл.', target ? 'настраивается в дизайне' : 'цель выключена'],
+      ['Любимое', stats.favorite ? stats.favorite[0] : '—', stats.favorite ? hm(stats.favorite[1]) : 'нет данных'],
+      ['Направления', String(stats.byActivity.size), 'проект, книги, курсы и другое']
+    ];
+    box.innerHTML = metrics.map(([a, b, c]) => `<article class="metric"><span>${escapeHtml(a)}</span><strong>${escapeHtml(b)}</strong><span>${escapeHtml(c)}</span></article>`).join('');
+    const insights = [];
+    if (!stats.entries.length) insights.push(['Старт', 'Добавь проект, книгу, курс или свой вариант — LifeOS начнёт считать третье кольцо.']);
+    else {
+      insights.push(['Темп', `Всего саморазвития: ${hm(stats.total, false)}. Средняя сессия: ${hm(stats.total / stats.entries.length)}.`]);
+      if (stats.today < target) insights.push(['Сегодня', `До дневной цели не хватает ${hm(Math.max(0, target - stats.today), false)}.`]);
+      else insights.push(['Сегодня', 'Кольцо саморазвития закрыто на выбранную дату.']);
+    }
+    $('#selfInsight').innerHTML = insights.map(([t, p]) => `<div class="insight"><strong>${escapeHtml(t)}</strong><p>${escapeHtml(p)}</p></div>`).join('');
+    const history = stats.entries.slice().sort((a, b) => b.date.localeCompare(a.date) || b.start.localeCompare(a.start)).slice(0, 30);
+    renderEntries('#selfHistory', history);
+  }
+
+  function renderSelfQuickGrid() {
+    const grid = $('#selfQuickGrid');
+    if (!grid) return;
+    grid.innerHTML = SELF_QUICK_TEMPLATES.map((template, index) => `
+      <button class="quick-card self-template" data-self-template="${index}">
+        <strong>${template.icon} ${escapeHtml(template.activity)}</strong>
+        <span>${template.start}–${template.end}</span>
+        <span>${escapeHtml(template.note)}</span>
+      </button>
+    `).join('');
+  }
+
   function renderEntryTypeOptions() {
     const select = $('#entryType');
     if (!select) return;
@@ -1178,6 +1349,35 @@
     select.innerHTML = allSportTypes().map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`).join('');
     select.value = allSportTypes().includes(current) ? current : 'Зал';
     $('#sportCustomWrap')?.classList.toggle('hidden', select.value !== 'Свой спорт');
+  }
+
+  function renderSelfTypeOptions() {
+    const select = $('#selfType');
+    if (!select) return;
+    const current = select.value || 'Проект';
+    select.innerHTML = allSelfTypes().map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`).join('');
+    select.value = allSelfTypes().includes(current) ? current : 'Проект';
+    $('#selfCustomWrap')?.classList.toggle('hidden', select.value !== 'Свой вариант');
+  }
+
+  function renderDesignSettings() {
+    if (!$('#designForm')) return;
+    const ui = state.ui || {};
+    $('#settingsThemeSelect').value = state.theme || 'system';
+    $('#selfTargetMinutes').value = Number(ui.selfDevTargetMinutes ?? 60);
+    $('#glassOpacity').value = Number(ui.glassOpacity ?? 68);
+    $('#glassBlur').value = Number(ui.glassBlur ?? 20);
+    $('#animationLevel').value = ui.animationLevel || 'normal';
+    $('#glassOpacityValue').textContent = `${$('#glassOpacity').value}%`;
+    $('#glassBlurValue').textContent = `${$('#glassBlur').value}px`;
+    const themeList = $('#themeList');
+    if (themeList) themeList.innerHTML = THEME_OPTIONS.map(([value, name, desc]) => `
+      <button class="theme-tile ${state.theme === value ? 'active' : ''}" type="button" data-theme-pick="${value}">
+        <span class="theme-swatch" data-theme-swatch="${value}"></span>
+        <strong>${escapeHtml(name)}</strong>
+        <small>${escapeHtml(desc)}</small>
+      </button>
+    `).join('');
   }
 
   function renderCustomTypeSettings() {
@@ -1217,6 +1417,20 @@
     return true;
   }
 
+  function addSelfType(name) {
+    const type = String(name || '').trim();
+    if (!type) return false;
+    state.selfDevTypes = state.selfDevTypes || [];
+    const exists = allSelfTypes().some((x) => x.toLowerCase() === type.toLowerCase());
+    if (exists) {
+      toast('Такой вариант саморазвития уже есть.');
+      return false;
+    }
+    state.selfDevTypes.push(type);
+    saveState(); renderAll(); toast('Вариант саморазвития добавлен.');
+    return true;
+  }
+
   function addSportEntry(data) {
     const activity = String(data.activity || 'Спорт').trim();
     const type = activity === 'Прогулка' ? 'Прогулка' : `Спорт: ${activity}`;
@@ -1229,6 +1443,19 @@
       intensity: data.intensity || 'Средняя',
       calories: Number(data.calories || 0),
       note: [data.note, data.intensity ? `интенсивность: ${data.intensity}` : '', data.calories ? `${data.calories} ккал` : ''].filter(Boolean).join(' · ')
+    });
+  }
+
+  function addSelfEntry(data) {
+    const activity = String(data.activity || 'Саморазвитие').trim();
+    const type = activity === 'Саморазвитие' ? 'Саморазвитие' : `Саморазвитие: ${activity}`;
+    return addEntry({
+      date: data.date,
+      start: data.start,
+      end: data.end,
+      type,
+      selfDevActivity: activity,
+      note: data.note || ''
     });
   }
 
@@ -1291,6 +1518,8 @@
     const projectsDone = state.projects.filter((p) => Number(p.progress || 0) >= 100 || p.status === 'Готово').length;
     const sports = sportStats();
     const sportMinutes = sports.total;
+    const selfDev = selfDevStats();
+    const selfMinutes = selfDev.total;
     const notes = Object.values(state.dayMeta).filter((m) => m.note && m.note.trim()).length;
     const jsonBackups = Number(localStorageSafeGet('lifeos.lastBackupCount') || 0);
     const targetPerWeek = Math.max(0, Number(activeConfig().targetWorkoutsPerWeek || 0));
@@ -1306,6 +1535,8 @@
     nextMilestones(Math.floor(focus / 60), 2, 5).forEach((target) => catalog.push([`Фокус ×${target}ч`, Math.floor(focus / 60) >= target, Math.floor(focus / 60), target, `Накопить ${target} часов фокуса.`]));
     nextMilestones(Math.floor(sportMinutes / 60), 2, 5).forEach((target) => catalog.push([`Спорт ×${target}ч`, Math.floor(sportMinutes / 60) >= target, Math.floor(sportMinutes / 60), target, `Накопить ${target} часов спорта или прогулок.`]));
     nextMilestones(sports.entries.length, Math.max(1, targetPerWeek), 5).forEach((target) => catalog.push([`Тренировки ×${target}`, sports.entries.length >= target, sports.entries.length, target, `Сделать ${target} спортивных активностей. Цель: ${targetPerWeek}/нед.`]));
+    nextMilestones(Math.floor(selfMinutes / 60), 2, 6).forEach((target) => catalog.push([`Саморазвитие ×${target}ч`, Math.floor(selfMinutes / 60) >= target, Math.floor(selfMinutes / 60), target, `Накопить ${target} часов книг, курсов, проектов или практики.`]));
+    nextMilestones(selfDev.entries.length, 5, 6).forEach((target) => catalog.push([`Сессии роста ×${target}`, selfDev.entries.length >= target, selfDev.entries.length, target, `Провести ${target} сессий саморазвития.`]));
     nextMilestones(notes, 7, 5).forEach((target) => catalog.push([`Дневник ×${target}`, notes >= target, notes, target, `Оставить ${target} заметок дня.`]));
     nextMilestones(state.projects.length, 3, 4).forEach((target) => catalog.push([`Проекты ×${target}`, state.projects.length >= target, state.projects.length, target, `Добавить ${target} проектов.`]));
     nextMilestones(projectsDone, 1, 4).forEach((target) => catalog.push([`Релизы ×${target}`, projectsDone >= target, projectsDone, target, `Закрыть ${target} проектов на 100% или статусом Готово.`]));
@@ -1319,7 +1550,7 @@
       <div class="xp-level">Lv. ${lvl.level}</div>
       <p class="muted">${xp} XP · до следующего уровня ${Math.max(0, lvl.need - lvl.into)} XP</p>
       <div class="progress big"><span style="width:${lvl.pct}%"></span></div>
-      <p class="muted small">Ачивки бесконечные: LifeOS генерирует новые рубежи по часам, дням, спорту, фокусу, заметкам и проектам.</p>
+      <p class="muted small">Ачивки бесконечные: LifeOS генерирует новые рубежи по часам, дням, спорту, саморазвитию, фокусу, заметкам и проектам.</p>
     `;
     const rows = achievementCatalog()
       .sort((a, b) => Number(b[1]) - Number(a[1]) || (a[3] - b[3]))
@@ -1350,6 +1581,7 @@
     const f = state.finance;
     const earned = (stats.work / 60) * Number(f.hourRate || 0) + stats.fullDays * Number(f.fullDayBonus || 0);
     const sports = sportStats();
+    const selfDev = selfDevStats();
     const typeRows = Array.from(typeMinutesAll().entries()).sort((a, b) => b[1] - a[1]);
     const body = `
       <h2>LifeOS Report</h2>
@@ -1360,6 +1592,7 @@
       <p><strong>Лучший день:</strong> ${stats.best.date ? formatDate(stats.best.date, { year: 'numeric' }) + ' — ' + hm(stats.best.minutes, false) : 'нет данных'}</p>
       <p><strong>Заработано по настройкам:</strong> ${rub(earned)}</p>
       <p><strong>Спорт:</strong> ${hm(sports.total, false)} · <strong>Тренировок/активностей:</strong> ${sports.entries.length} · <strong>Ккал:</strong> ${sports.calories || 0}</p>
+      <p><strong>Саморазвитие:</strong> ${hm(selfDev.total, false)} · <strong>Сессий:</strong> ${selfDev.entries.length} · <strong>Любимое направление:</strong> ${selfDev.favorite ? escapeHtml(selfDev.favorite[0]) : 'нет данных'}</p>
       <h3>Категории времени</h3>
       <ul>${typeRows.map(([type, mins]) => `<li><strong>${escapeHtml(type)}:</strong> ${hm(mins, false)}</li>`).join('')}</ul>
       <h3>Проекты</h3>
@@ -1431,9 +1664,9 @@
   }
 
   function exportCsv() {
-    const rows = [['date', 'start', 'end', 'type', 'sport_activity', 'intensity', 'calories', 'minutes', 'note', 'auto']];
+    const rows = [['date', 'start', 'end', 'type', 'sport_activity', 'selfdev_activity', 'intensity', 'calories', 'minutes', 'note', 'auto']];
     state.entries.sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start)).forEach((entry) => {
-      rows.push([entry.date, entry.start, entry.end, entry.type, entry.sportActivity || '', entry.intensity || '', entry.calories || '', String(timeToMinutes(entry.end) - timeToMinutes(entry.start)), entry.note || '', entry.auto ? '1' : '0']);
+      rows.push([entry.date, entry.start, entry.end, entry.type, entry.sportActivity || '', entry.selfDevActivity || '', entry.intensity || '', entry.calories || '', String(timeToMinutes(entry.end) - timeToMinutes(entry.start)), entry.note || '', entry.auto ? '1' : '0']);
     });
     const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
     downloadFile(`lifeos-journal-${todayKey()}.csv`, csv, 'text/csv;charset=utf-8');
@@ -1499,6 +1732,14 @@
         const t = SPORT_QUICK_TEMPLATES[Number(target.dataset.sportTemplate)];
         addSportEntry({ date: state.selectedDate, start: t.start, end: t.end, activity: t.activity, intensity: t.intensity, calories: t.calories, note: t.note });
       }
+      if (target.dataset.selfTemplate !== undefined) {
+        const t = SELF_QUICK_TEMPLATES[Number(target.dataset.selfTemplate)];
+        addSelfEntry({ date: state.selectedDate, start: t.start, end: t.end, activity: t.activity, note: t.note });
+      }
+      if (target.dataset.themePick) {
+        state.theme = target.dataset.themePick;
+        saveState(); renderAll(); toast('Тема обновлена.');
+      }
       if (target.dataset.template !== undefined) {
         const t = QUICK_TEMPLATES[Number(target.dataset.template)];
         if (t.type === 'Работа') {
@@ -1553,6 +1794,10 @@
         state.customTypes = (state.customTypes || []).filter((type) => type !== target.dataset.customTypeDel);
         saveState(); renderAll(); toast('Свой вариант удалён из списка. Старые записи сохранены.');
       }
+      if (target.dataset.selfTypeDel) {
+        state.selfDevTypes = (state.selfDevTypes || []).filter((type) => type !== target.dataset.selfTypeDel);
+        saveState(); renderAll(); toast('Вариант саморазвития удалён. Старые записи сохранены.');
+      }
     });
 
     document.addEventListener('change', (event) => {
@@ -1566,6 +1811,7 @@
 
     $('#selectedDate').addEventListener('change', (e) => setSelectedDate(e.target.value));
     $('#themeSelect').addEventListener('change', (e) => { state.theme = e.target.value; saveState(); renderAll(); });
+    $('#settingsThemeSelect')?.addEventListener('change', (e) => { state.theme = e.target.value; saveState(); renderAll(); });
     $('#dailyNote').addEventListener('input', (e) => { getMeta().note = e.target.value; saveState(); renderHero(); renderAchievements(); });
     $('#moodRow').addEventListener('click', (e) => {
       const btn = e.target.closest('[data-mood]');
@@ -1576,6 +1822,15 @@
     $('#startDayBtn').addEventListener('click', () => { getMeta().openedAt = getMeta().openedAt || new Date().toISOString(); saveState(); renderAll(); toast('День открыт.'); });
     $('#closeDayBtn').addEventListener('click', () => { getMeta().closedAt = new Date().toISOString(); saveState(); renderAll(); toast('День закрыт.'); });
     $('#fillWorkDayBtn').addEventListener('click', () => fillWorkDay());
+    $('#quickCompleteWorkBtn')?.addEventListener('click', () => fillWorkDay());
+    $('#quickCompleteSportBtn')?.addEventListener('click', () => {
+      addSportEntry({ date: state.selectedDate, start: '18:00', end: '19:00', activity: 'Тренировка', intensity: 'Средняя', calories: 0, note: 'Быстрая отметка спорта' });
+      toast('Спорт отмечен.');
+    });
+    $('#quickCompleteSelfBtn')?.addEventListener('click', () => {
+      addSelfEntry({ date: state.selectedDate, start: '20:00', end: '21:00', activity: 'Саморазвитие', note: 'Быстрая отметка саморазвития' });
+      toast('Саморазвитие отмечено.');
+    });
     $('#removeAutoWorkBtn').addEventListener('click', () => removeAutoWork());
     $('#copyYesterdayBtn').addEventListener('click', copyYesterday);
 
@@ -1622,6 +1877,19 @@
       });
       if (ok) { $('#sportNote').value = ''; $('#sportCalories').value = ''; $('#sportCustomType').value = ''; }
     });
+    $('#selfType')?.addEventListener('change', (e) => $('#selfCustomWrap').classList.toggle('hidden', e.target.value !== 'Свой вариант'));
+    $('#selfCustomForm')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (addSelfType($('#newSelfType').value)) e.target.reset();
+    });
+    $('#selfForm')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const raw = $('#selfType').value;
+      const custom = $('#selfCustomType').value.trim();
+      const activity = raw === 'Свой вариант' ? (custom || 'Свой вариант') : raw;
+      const ok = addSelfEntry({ date: $('#selfDate').value, start: $('#selfStart').value, end: $('#selfEnd').value, activity, note: $('#selfNote').value.trim() });
+      if (ok) { $('#selfNote').value = ''; $('#selfCustomType').value = ''; }
+    });
     $('#entryForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const rawType = $('#entryType').value;
@@ -1658,6 +1926,27 @@
       e.preventDefault();
       state.finance = { hourRate: Number($('#hourRate').value || 0), fullDayBonus: Number($('#fullDayBonus').value || 0), missPenalty: Number($('#missPenalty').value || 0), moneyTarget: Number($('#moneyTarget').value || 0) };
       saveState(); renderAll(); toast('Финансовый модуль обновлён.');
+    });
+    ['glassOpacity','glassBlur'].forEach((id) => {
+      const el = $('#' + id);
+      el?.addEventListener('input', () => {
+        state.ui = state.ui || {};
+        if (id === 'glassOpacity') state.ui.glassOpacity = Number(el.value);
+        if (id === 'glassBlur') state.ui.glassBlur = Number(el.value);
+        applyTheme();
+        renderDesignSettings();
+      });
+    });
+    $('#animationLevel')?.addEventListener('change', (e) => { state.ui = state.ui || {}; state.ui.animationLevel = e.target.value; saveState(); renderAll(); });
+    $('#designForm')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      state.ui = state.ui || {};
+      state.theme = $('#settingsThemeSelect').value;
+      state.ui.selfDevTargetMinutes = Math.max(0, Number($('#selfTargetMinutes').value || 0));
+      state.ui.glassOpacity = Number($('#glassOpacity').value || 68);
+      state.ui.glassBlur = Number($('#glassBlur').value || 20);
+      state.ui.animationLevel = $('#animationLevel').value || 'normal';
+      saveState(); renderAll(); toast('Визуал и цели сохранены.');
     });
     $('#projectForm').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -1787,7 +2076,13 @@
         idbSet(JSON.stringify(state)).catch(() => {});
         return;
       }
-      const raw = await idbGet(KEY);
+      let raw = await idbGet(KEY).catch(() => null);
+      if (!raw) {
+        for (const legacyKey of LEGACY_KEYS) {
+          raw = await idbGet(legacyKey).catch(() => null);
+          if (raw) break;
+        }
+      }
       if (!raw) return;
       const restored = normalizeLoadedState(JSON.parse(raw));
       state = restored;
@@ -1811,6 +2106,7 @@
     $('#entryStart').value = '10:00';
     $('#entryEnd').value = '11:00';
     if ($('#sportDate')) $('#sportDate').value = state.selectedDate;
+    if ($('#selfDate')) $('#selfDate').value = state.selectedDate;
     renderAll();
     checkReminders();
     setInterval(checkReminders, 60 * 1000);

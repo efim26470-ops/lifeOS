@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifeos-v7-design-icons';
+const CACHE_NAME = 'lifeos-v8-rings-apple-style';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -59,3 +59,5 @@ self.addEventListener('fetch', (event) => {
   const isNavigation = event.request.mode === 'navigate';
   event.respondWith((isNavigation || isCore) ? networkFirst(event.request) : cacheFirst(event.request));
 });
+
+// v8: network-first cache to avoid stale GitHub Pages layouts.

@@ -1,7 +1,7 @@
 {
-  "name": "LifeOS — Personal Day Control",
+  "name": "LifeOS — Rings, Work, Sport & Growth",
   "short_name": "LifeOS",
-  "description": "Локальная PWA-панель для графика работы, спорта, привычек, денег, проектов, отчётов и бесконечных ачивок.",
+  "description": "Локальная PWA-панель в стиле Apple Fitness/Music/Journal: график работы, кольца целей, спорт, саморазвитие, отчёты и бесконечные ачивки.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -10,14 +10,15 @@
     "standalone",
     "browser"
   ],
-  "background_color": "#0f172a",
-  "theme_color": "#111827",
+  "background_color": "#020617",
+  "theme_color": "#0a84ff",
   "orientation": "portrait",
   "lang": "ru",
   "categories": [
     "productivity",
-    "utilities",
-    "business"
+    "health",
+    "fitness",
+    "utilities"
   ],
   "icons": [
     {
@@ -73,6 +74,12 @@
       "short_name": "Спорт",
       "url": "./index.html#sport",
       "description": "Добавить тренировку или прогулку"
+    },
+    {
+      "name": "Саморазвитие",
+      "short_name": "Рост",
+      "url": "./index.html#selfdev",
+      "description": "Добавить проект, книгу, курс или свой вариант"
     },
     {
       "name": "Отчёт",

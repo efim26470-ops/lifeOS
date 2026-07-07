@@ -61,10 +61,20 @@
         <button class="soft-btn" id="quickBackupBtn">Бэкап</button>
         <select id="themeSelect" class="select compact-select" aria-label="Тема оформления">
           <option value="system">Системная</option>
-          <option value="light">Светлая</option>
-          <option value="dark">Тёмная</option>
+          <option value="light">iOS Light</option>
+          <option value="dark">iOS Dark</option>
           <option value="midnight">Midnight</option>
           <option value="aurora">Aurora</option>
+          <option value="fitness">Apple Fitness</option>
+          <option value="music">Apple Music</option>
+          <option value="journal">Apple Journal</option>
+          <option value="ios7">iOS 7 Frost</option>
+          <option value="ios13">iOS 13</option>
+          <option value="ios17">iOS 17 Pro</option>
+          <option value="ios18">iOS 18 Liquid</option>
+          <option value="aqua">Classic Aqua</option>
+          <option value="graphite">Graphite</option>
+          <option value="ipod">iPod</option>
           <option value="snitch">Стукач</option>
         </select>
       </div>
@@ -95,6 +105,7 @@
       <button class="tab" data-tab="habits">Привычки</button>
       <button class="tab" data-tab="focus">Фокус</button>
       <button class="tab" data-tab="sport">Спорт</button>
+      <button class="tab" data-tab="selfdev">Саморазвитие</button>
       <button class="tab" data-tab="money">Деньги</button>
       <button class="tab" data-tab="projects">Проекты</button>
       <button class="tab" data-tab="reports">Отчёты</button>
@@ -126,6 +137,22 @@
                   <button class="soft-btn" id="fillWorkDayBtn">Засчитать план работы</button>
                 </div>
               </div>
+            </div>
+          </article>
+
+          <article class="panel card rings-panel span-2">
+            <div class="section-head">
+              <div><p class="eyebrow">Apple Fitness style</p><h3>Кольца дня</h3></div>
+              <button class="soft-btn" data-jump="selfdev">Саморазвитие</button>
+            </div>
+            <div class="rings-layout">
+              <div class="triple-rings" id="tripleRings" aria-label="Кольца выполнения целей"><span id="ringsCenterLabel">0%</span></div>
+              <div class="rings-list" id="ringsList"></div>
+            </div>
+            <div class="button-row stretch quick-complete-row">
+              <button class="primary-btn" id="quickCompleteWorkBtn" type="button">Закрыть работу</button>
+              <button class="soft-btn" id="quickCompleteSportBtn" type="button">Отметить спорт</button>
+              <button class="soft-btn" id="quickCompleteSelfBtn" type="button">Саморазвитие</button>
             </div>
           </article>
 
@@ -348,6 +375,48 @@
         </div>
       </section>
 
+      <section id="selfdev" class="view">
+        <div class="grid two-columns">
+          <article class="panel card">
+            <div class="section-head"><div><p class="eyebrow">Саморазвитие</p><h3>Добавить сессию</h3></div></div>
+            <form id="selfForm" class="form">
+              <label class="field">Дата<input class="input" type="date" id="selfDate" required></label>
+              <div class="form-row">
+                <label class="field">Начало<input class="input" type="time" id="selfStart" step="60" value="20:00" required></label>
+                <label class="field">Конец<input class="input" type="time" id="selfEnd" step="60" value="21:00" required></label>
+              </div>
+              <label class="field">Направление
+                <select class="select" id="selfType" required></select>
+              </label>
+              <label class="field hidden" id="selfCustomWrap">Свой вариант<input class="input" id="selfCustomType" maxlength="60" placeholder="Например: английский, Ableton, финансы"></label>
+              <label class="field">Заметка<textarea id="selfNote" rows="3" maxlength="360" placeholder="Что изучал, что сделал, ссылка/глава/курс"></textarea></label>
+              <button class="primary-btn full" type="submit">Сохранить саморазвитие</button>
+            </form>
+          </article>
+
+          <article class="panel card">
+            <div class="section-head"><div><p class="eyebrow">Быстрый старт</p><h3>Проекты, книги, курсы</h3></div></div>
+            <div id="selfQuickGrid" class="quick-grid"></div>
+            <div class="divider"></div>
+            <form id="selfCustomForm" class="form compact-form">
+              <label class="field">Добавить свой вариант<input class="input" id="newSelfType" maxlength="60" placeholder="Например: сербский, дизайн, Ableton"></label>
+              <button class="soft-btn full" type="submit">Добавить вариант</button>
+            </form>
+          </article>
+
+          <article class="panel card span-2">
+            <div class="section-head"><div><p class="eyebrow">Прогресс</p><h3>Саморазвитие</h3></div></div>
+            <div id="selfStats" class="metric-grid wide"></div>
+            <div id="selfInsight" class="insight-list"></div>
+          </article>
+
+          <article class="panel card span-2">
+            <div class="section-head"><div><p class="eyebrow">История</p><h3>Сессии саморазвития</h3></div></div>
+            <div id="selfHistory" class="feed"></div>
+          </article>
+        </div>
+      </section>
+
       <section id="money" class="view">
         <div class="grid two-columns">
           <article class="panel card">
@@ -442,6 +511,42 @@
                 <button class="primary-btn" type="submit">Сохранить график</button>
               </div>
               <p class="muted small">Изменение графика пересчитывает план/факт, календарь, финансы, отчёты и ачивки. Старые записи не удаляются.</p>
+            </form>
+          </article>
+
+          <article class="panel card span-2">
+            <div class="section-head"><div><p class="eyebrow">Визуальный стиль</p><h3>Liquid Glass, темы и анимации</h3></div></div>
+            <form id="designForm" class="form setup-form">
+              <div class="form-row">
+                <label class="field">Тема
+                  <select id="settingsThemeSelect" class="select">
+                    <option value="system">Системная</option>
+                    <option value="light">iOS Light</option>
+                    <option value="dark">iOS Dark</option>
+                    <option value="midnight">Midnight</option>
+                    <option value="aurora">Aurora</option>
+                    <option value="fitness">Apple Fitness</option>
+                    <option value="music">Apple Music</option>
+                    <option value="journal">Apple Journal</option>
+                    <option value="ios7">iOS 7 Frost</option>
+                    <option value="ios13">iOS 13</option>
+                    <option value="ios17">iOS 17 Pro</option>
+                    <option value="ios18">iOS 18 Liquid</option>
+                    <option value="aqua">Classic Aqua</option>
+                    <option value="graphite">Graphite</option>
+                    <option value="ipod">iPod</option>
+                    <option value="snitch">Стукач</option>
+                  </select>
+                </label>
+                <label class="field">Цель саморазвития в день, мин<input class="input" id="selfTargetMinutes" type="number" min="0" max="480" step="5" value="60"></label>
+              </div>
+              <div class="range-grid">
+                <label class="field range-field">Сила Liquid Glass <input type="range" id="glassOpacity" min="35" max="92" value="68"><span id="glassOpacityValue">68%</span></label>
+                <label class="field range-field">Размытие стекла <input type="range" id="glassBlur" min="6" max="34" value="20"><span id="glassBlurValue">20px</span></label>
+                <label class="field range-field">Анимации <select id="animationLevel" class="select"><option value="low">Минимальные</option><option value="normal">Обычные</option><option value="high">Живые</option></select></label>
+              </div>
+              <div class="theme-list" id="themeList"></div>
+              <button class="primary-btn full" type="submit">Сохранить визуал</button>
             </form>
           </article>
 
