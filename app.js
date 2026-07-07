@@ -6,7 +6,7 @@
   const DEFAULT_START = '2026-07-03';
   const DEFAULT_END = '2026-08-31';
   const DAY_LABELS = [
-    ['0', 'Вс'], ['1', 'Пн'], ['2', 'Вт'], ['3', 'Ср'], ['4', 'Чт'], ['5', 'Пт'], ['6', 'Сб']
+    ['1', 'Пн'], ['2', 'Вт'], ['3', 'Ср'], ['4', 'Чт'], ['5', 'Пт'], ['6', 'Сб'], ['0', 'Вс']
   ];
   const DEFAULT_WORK_CONFIG = {
     startDate: DEFAULT_START,
@@ -304,6 +304,18 @@
 
   function formatDate(key, options = {}) {
     return toDate(key).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'short', ...options });
+  }
+
+  function formatPeriodTitle() {
+    const start = toDate(periodStart());
+    const end = toDate(periodEnd());
+    const compact = window.matchMedia && window.matchMedia('(max-width: 520px)').matches;
+    if (compact) {
+      const s = start.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '');
+      const e = end.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' }).replace('.', '');
+      return `${s} — ${e}`;
+    }
+    return `${formatDate(periodStart(), { year: 'numeric' })} — ${formatDate(periodEnd(), { year: 'numeric' })}`;
   }
 
   function addDays(key, amount) {
@@ -686,7 +698,7 @@
     $('#metricWork').textContent = hm(stats.work);
     $('#metricLeft').textContent = hm(stats.left);
     $('#metricLevel').textContent = `Lv. ${lvl.level}`;
-    $('#heroPeriodTitle').textContent = `${formatDate(periodStart(), { year: 'numeric' })} — ${formatDate(periodEnd(), { year: 'numeric' })}`;
+    $('#heroPeriodTitle').textContent = formatPeriodTitle();
     $('#heroScheduleSummary').textContent = `${scheduleSummary()} · спорт: ${activeConfig().targetWorkoutsPerWeek} трен./нед.`;
     $('#reportPeriodTitle').textContent = `${periodStart()} — ${periodEnd()}`;
     syncDateInputs();
@@ -1740,6 +1752,14 @@
     checkReminders();
     setInterval(checkReminders, 60 * 1000);
   }
+
+  let resizeRerenderTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeRerenderTimer);
+    resizeRerenderTimer = setTimeout(() => {
+      if (state) renderHero();
+    }, 120);
+  });
 
   document.addEventListener('DOMContentLoaded', bootstrap);
 })();

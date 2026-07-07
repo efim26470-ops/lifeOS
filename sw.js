@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifeos-v5-config-iphone';
+const CACHE_NAME = 'lifeos-v6-visual-fixes';
 const CORE_ASSETS = [
   './',
   './index.html',

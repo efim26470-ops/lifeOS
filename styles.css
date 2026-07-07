@@ -83,3 +83,290 @@ body{padding-bottom:var(--safe-bottom);-webkit-text-size-adjust:100%;touch-actio
 @media (max-width:760px){body{padding-top:0}.app-shell{width:100%;margin:0;padding:calc(8px + var(--safe-top)) 10px calc(88px + var(--safe-bottom));gap:10px}.topbar{border-radius:24px;padding-top:calc(12px + var(--safe-top));margin-top:0}.hero{border-radius:24px}.tabs{position:fixed;left:10px;right:10px;bottom:calc(8px + var(--safe-bottom));top:auto;z-index:70;border-radius:24px;padding:8px;box-shadow:0 18px 50px rgba(15,23,42,.22);background:var(--panel-strong);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}.tab{padding:10px 14px;min-height:42px}.card{border-radius:24px}.schedule-row{grid-template-columns:1fr 1fr;gap:8px}.schedule-toggle{grid-column:1/-1}.onboarding-card{border-radius:28px;padding:18px}.storage-banner{position:fixed;left:10px;right:10px;top:calc(8px + var(--safe-top));border-radius:18px;box-shadow:0 18px 50px rgba(15,23,42,.22)}}
 @media (max-width:430px){.hero h2{font-size:31px}.section-head h3{font-size:21px}.metric strong{font-size:25px}.status-orb{width:136px;height:136px}.status-orb span{font-size:32px}.timer{font-size:58px}.onboarding-card h2{font-size:34px}}
 @media (prefers-reduced-motion: reduce){.view.active,.card,.metric,.quick-card,.list-card,.entry-card,.day-card,.insight,.progress span,.timebar-segment,.status-orb,.brand-mark{animation:none!important}}
+
+
+/* LifeOS v6 visual fixes: iPhone layout, no horizontal overflow, safer bottom nav */
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+body {
+  min-width: 0;
+}
+.app-shell,
+main,
+.view,
+.panel,
+.card,
+.hero,
+.hero-copy,
+.metric,
+.metric-grid,
+.section-head,
+.section-head > *,
+.status-layout,
+.form,
+.form-row,
+.filter-row,
+.schedule-row,
+.schedule-row > *,
+.quick-grid,
+.feed,
+.stack-list,
+.entry-card,
+.list-card,
+.problem-item,
+.reason-item {
+  min-width: 0;
+  max-width: 100%;
+}
+.input,
+.select,
+textarea,
+button {
+  min-width: 0;
+  max-width: 100%;
+}
+.hero h2,
+.section-head h3,
+.card h3,
+.card h4,
+.metric strong,
+.hero-alert,
+.plan-row,
+.entry-card,
+.list-card,
+.insight,
+.problem-item,
+.reason-item {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+input[type="date"],
+input[type="time"] {
+  text-align: center;
+  white-space: nowrap;
+}
+.schedule-row .input {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+.toast {
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    padding-left: max(10px, env(safe-area-inset-left, 0px));
+    padding-right: max(10px, env(safe-area-inset-right, 0px));
+    padding-bottom: calc(122px + var(--safe-bottom));
+  }
+  .onboarding {
+    display: block;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: calc(14px + var(--safe-top)) max(10px, env(safe-area-inset-right, 0px)) calc(24px + var(--safe-bottom)) max(10px, env(safe-area-inset-left, 0px));
+  }
+  .onboarding.hidden {
+    display: none;
+  }
+  .onboarding-card {
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+    margin: 0 auto;
+    border-radius: 26px;
+    padding: 18px;
+  }
+  .onboarding-card h2 {
+    font-size: clamp(30px, 9.2vw, 42px);
+    line-height: 1.02;
+    letter-spacing: -0.055em;
+  }
+  .onboarding-card .muted {
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  .setup-block {
+    padding: 12px;
+    border-radius: 22px;
+  }
+  .schedule-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+    padding: 10px;
+    border-radius: 20px;
+  }
+  .schedule-toggle {
+    grid-column: 1 / -1;
+  }
+  .schedule-toggle input {
+    flex: 0 0 auto;
+  }
+  .schedule-row .input {
+    height: 48px;
+    font-size: 16px;
+    border-radius: 16px;
+  }
+  .button-row.stretch {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .topbar {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .brand {
+    width: 100%;
+  }
+  .top-actions {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    width: 100%;
+  }
+  .top-actions .select {
+    width: 100%;
+  }
+  #installBtn:not([hidden]) {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+  .hero {
+    padding: 18px;
+  }
+  .hero h2 {
+    font-size: clamp(28px, 9.3vw, 40px);
+    line-height: 1.03;
+  }
+  #heroScheduleSummary {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .hero-alert {
+    font-size: 14px;
+    line-height: 1.42;
+  }
+  .metric-grid.hero-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .metric {
+    min-height: 84px;
+    padding: 14px;
+  }
+  .metric strong {
+    font-size: clamp(24px, 7vw, 31px);
+  }
+  .section-head {
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .date-input {
+    width: 100%;
+    max-width: none;
+  }
+  .status-layout {
+    gap: 16px;
+  }
+  .button-row {
+    gap: 9px;
+  }
+  .button-row .primary-btn,
+  .button-row .soft-btn,
+  .button-row .danger-btn {
+    flex: 1 1 140px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .filter-row {
+    gap: 10px;
+  }
+  .tabs {
+    min-height: 64px;
+    max-height: 70px;
+    align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px;
+  }
+  .tab {
+    scroll-snap-align: start;
+    flex: 0 0 auto;
+    padding: 10px 15px;
+    font-size: 15px;
+  }
+  .toast {
+    bottom: calc(88px + var(--safe-bottom));
+    max-width: calc(100% - 48px);
+  }
+}
+
+@media (max-width: 430px) {
+  .app-shell {
+    gap: 12px;
+  }
+  .topbar,
+  .hero,
+  .card,
+  .panel {
+    border-radius: 24px;
+  }
+  .card {
+    padding: 15px;
+  }
+  .hero h2 {
+    font-size: clamp(27px, 8.6vw, 36px);
+  }
+  .section-head h3 {
+    font-size: 22px;
+    line-height: 1.12;
+  }
+  .metric-grid.hero-metrics {
+    grid-template-columns: 1fr;
+  }
+  .metric {
+    min-height: 78px;
+  }
+  .status-orb {
+    width: 132px;
+    height: 132px;
+  }
+  .status-orb span {
+    font-size: 30px;
+  }
+  .primary-btn,
+  .soft-btn,
+  .danger-btn {
+    border-radius: 16px;
+    padding: 12px 13px;
+  }
+  .schedule-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .tabs {
+    left: 8px;
+    right: 8px;
+    bottom: calc(8px + var(--safe-bottom));
+  }
+}
+
+@media (max-width: 370px) {
+  .schedule-row {
+    grid-template-columns: 1fr;
+  }
+  .schedule-toggle {
+    grid-column: auto;
+  }
+  .top-actions {
+    grid-template-columns: 1fr;
+  }
+  .metric-grid.hero-metrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+.filter-field{margin-bottom:0}.filter-row{align-items:end}
+@media (max-width:760px){.filter-row{align-items:stretch}.filter-field{width:100%}}

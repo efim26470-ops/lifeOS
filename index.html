@@ -229,9 +229,15 @@
         <article class="panel card">
           <div class="section-head"><div><p class="eyebrow">Журнал</p><h3>Все интервалы</h3></div><button class="soft-btn" id="exportCsvBtn">CSV</button></div>
           <div class="filter-row">
-            <input class="input" type="date" id="filterDate" min="2026-07-03" max="2026-08-31">
-            <select class="select" id="filterType"><option value="all">Все типы</option></select>
-            <input class="input" type="search" id="filterSearch" placeholder="Поиск по типу или заметке">
+            <label class="field filter-field">Дата
+              <input class="input" type="date" id="filterDate" min="2026-07-03" max="2026-08-31">
+            </label>
+            <label class="field filter-field">Тип
+              <select class="select" id="filterType"><option value="all">Все типы</option></select>
+            </label>
+            <label class="field filter-field">Поиск
+              <input class="input" type="search" id="filterSearch" placeholder="Поиск по типу или заметке">
+            </label>
             <button class="soft-btn" id="resetFiltersBtn">Сброс</button>
           </div>
           <div id="journalList" class="feed"></div>
