@@ -20,8 +20,31 @@
   <div class="bg-orb bg-orb-2"></div>
   <div class="bg-orb bg-orb-3"></div>
 
+  <div id="onboarding" class="onboarding hidden" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
+    <div class="onboarding-card panel">
+      <p class="eyebrow">Первый запуск</p>
+      <h2 id="setupTitle">Настрой LifeOS под свой график</h2>
+      <p class="muted">Выбери период работы, рабочие дни и желаемое количество тренировок в неделю. Потом всё можно изменить в настройках.</p>
+      <form id="setupForm" class="form setup-form">
+        <div class="form-row">
+          <label class="field">Начало периода<input class="input" type="date" id="setupStartDate" required></label>
+          <label class="field">Конец периода<input class="input" type="date" id="setupEndDate" required></label>
+        </div>
+        <label class="field">Желаемых тренировок в неделю<input class="input" type="number" id="setupWorkoutTarget" min="0" max="14" step="1" required></label>
+        <div class="setup-block">
+          <div class="section-head compact-head"><div><p class="eyebrow">График</p><h3>Рабочие дни и часы</h3></div></div>
+          <div id="setupScheduleGrid" class="schedule-grid"></div>
+        </div>
+        <div class="button-row stretch">
+          <button class="soft-btn" type="button" id="setupDefaultBtn">Вернуть стандарт</button>
+          <button class="primary-btn" type="submit">Запустить LifeOS</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="storageBanner" class="storage-banner" hidden>
-    localStorage недоступен. Данные будут храниться только до закрытия вкладки. Экспортируй JSON перед выходом.
+    <span id="storageBannerText">Хранилище проверяется...</span>
   </div>
 
   <div class="app-shell">
@@ -50,8 +73,8 @@
     <section class="hero panel">
       <div class="hero-copy">
         <p class="eyebrow">Рабочий период</p>
-        <h2>3 июля — 31 августа 2026</h2>
-        <p>Будни: 10:00–17:00 · Суббота: 10:00–14:00 · Воскресенье: выходной</p>
+        <h2 id="heroPeriodTitle">3 июля — 31 августа 2026</h2>
+        <p id="heroScheduleSummary">Будни: 10:00–17:00 · Суббота: 10:00–14:00 · Воскресенье: выходной</p>
         <div class="hero-alert" id="heroAlert">Загрузка LifeOS...</div>
       </div>
       <div class="metric-grid hero-metrics">
@@ -88,7 +111,7 @@
                 <p class="eyebrow">Командный центр</p>
                 <h3 id="todayHeading">Сегодня</h3>
               </div>
-              <input class="input date-input" type="date" id="selectedDate" min="2026-07-03" max="2026-08-31">
+              <input class="input date-input" type="date" id="selectedDate">
             </div>
             <div class="status-layout">
               <div class="status-orb" id="dayOrb"><span id="dayPercent">0%</span></div>
@@ -158,7 +181,7 @@
           <article class="panel card">
             <div class="section-head"><div><p class="eyebrow">Запись времени</p><h3>Интервал</h3></div></div>
             <form id="entryForm" class="form">
-              <label class="field">Дата<input class="input" type="date" id="entryDate" min="2026-07-03" max="2026-08-31" required></label>
+              <label class="field">Дата<input class="input" type="date" id="entryDate" required></label>
               <div class="form-row">
                 <label class="field">Начало<input class="input" type="time" id="entryStart" step="60" required></label>
                 <label class="field">Конец<input class="input" type="time" id="entryEnd" step="60" required></label>
@@ -278,7 +301,7 @@
           <article class="panel card">
             <div class="section-head"><div><p class="eyebrow">Спорт</p><h3>Добавить тренировку</h3></div></div>
             <form id="sportForm" class="form">
-              <label class="field">Дата<input class="input" type="date" id="sportDate" min="2026-07-03" max="2026-08-31" required></label>
+              <label class="field">Дата<input class="input" type="date" id="sportDate" required></label>
               <div class="form-row">
                 <label class="field">Начало<input class="input" type="time" id="sportStart" step="60" value="18:00" required></label>
                 <label class="field">Конец<input class="input" type="time" id="sportEnd" step="60" value="19:00" required></label>
@@ -366,7 +389,7 @@
       <section id="reports" class="view">
         <div class="grid two-columns">
           <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Итоговый отчёт</p><h3>03.07–31.08</h3></div></div>
+            <div class="section-head"><div><p class="eyebrow">Итоговый отчёт</p><h3 id="reportPeriodTitle">Период LifeOS</h3></div></div>
             <div class="button-row stretch"><button class="primary-btn" id="generateReportBtn">Сформировать отчёт</button><button class="soft-btn" id="downloadReportBtn">Скачать HTML</button></div>
             <div class="divider"></div>
             <div id="reportPreview" class="report-preview"></div>
@@ -398,6 +421,24 @@
 
       <section id="settings" class="view">
         <div class="grid two-columns">
+
+          <article class="panel card span-2">
+            <div class="section-head"><div><p class="eyebrow">Первичная настройка</p><h3>График работы и спорт</h3></div></div>
+            <form id="configForm" class="form setup-form">
+              <div class="form-row">
+                <label class="field">Начало периода<input class="input" type="date" id="configStartDate" required></label>
+                <label class="field">Конец периода<input class="input" type="date" id="configEndDate" required></label>
+              </div>
+              <label class="field">Желаемых тренировок в неделю<input class="input" type="number" id="configWorkoutTarget" min="0" max="14" step="1" required></label>
+              <div id="settingsScheduleGrid" class="schedule-grid"></div>
+              <div class="button-row stretch">
+                <button class="soft-btn" type="button" id="configDefaultBtn">Стандартный график</button>
+                <button class="primary-btn" type="submit">Сохранить график</button>
+              </div>
+              <p class="muted small">Изменение графика пересчитывает план/факт, календарь, финансы, отчёты и ачивки. Старые записи не удаляются.</p>
+            </form>
+          </article>
+
           <article class="panel card">
             <div class="section-head"><div><p class="eyebrow">PWA</p><h3>Установка на устройство</h3></div></div>
             <div class="install-steps">

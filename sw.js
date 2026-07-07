@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifeos-final-v5-sport';
+const CACHE_NAME = 'lifeos-v5-config-iphone';
 const CORE_ASSETS = [
   './',
   './index.html',

@@ -1,10 +1,27 @@
 (() => {
   'use strict';
 
-  const KEY = 'lifeos.v4.final';
-  const START = '2026-07-03';
-  const END = '2026-08-31';
-  const TOTAL_PLAN_MINUTES = 330 * 60;
+  const KEY = 'lifeos.v5.configurable';
+  const LEGACY_KEYS = ['lifeos.v4.final', 'lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
+  const DEFAULT_START = '2026-07-03';
+  const DEFAULT_END = '2026-08-31';
+  const DAY_LABELS = [
+    ['0', 'Вс'], ['1', 'Пн'], ['2', 'Вт'], ['3', 'Ср'], ['4', 'Чт'], ['5', 'Пт'], ['6', 'Сб']
+  ];
+  const DEFAULT_WORK_CONFIG = {
+    startDate: DEFAULT_START,
+    endDate: DEFAULT_END,
+    targetWorkoutsPerWeek: 3,
+    schedule: {
+      0: { enabled: false, start: '10:00', end: '14:00' },
+      1: { enabled: true, start: '10:00', end: '17:00' },
+      2: { enabled: true, start: '10:00', end: '17:00' },
+      3: { enabled: true, start: '10:00', end: '17:00' },
+      4: { enabled: true, start: '10:00', end: '17:00' },
+      5: { enabled: true, start: '10:00', end: '17:00' },
+      6: { enabled: true, start: '10:00', end: '14:00' }
+    }
+  };
   const MOODS = [
     ['🔥', 'мощно'],
     ['🙂', 'нормально'],
@@ -25,8 +42,8 @@
     { activity: 'Растяжка', start: '21:30', end: '21:50', intensity: 'Лёгкая', calories: 70, note: 'Растяжка / мобилити', icon: '🧘' }
   ];
   const QUICK_TEMPLATES = [
-    { type: 'Работа', start: '10:00', end: '17:00', note: 'Полный рабочий день', icon: '💼' },
-    { type: 'Работа', start: '10:00', end: '14:00', note: 'Субботний рабочий день', icon: '🧩' },
+    { type: 'Работа', start: '10:00', end: '17:00', note: 'Полный рабочий день по выбранному графику', icon: '💼' },
+    { type: 'Работа', start: '10:00', end: '14:00', note: 'Короткий рабочий день по выбранному графику', icon: '🧩' },
     { type: 'Обед', start: '13:00', end: '13:30', note: 'Перерыв на обед', icon: '🍽️' },
     { type: 'Спорт', start: '18:00', end: '19:00', note: 'Спорт / тренировка', icon: '🏋️' },
     { type: 'Прогулка', start: '20:00', end: '21:00', note: 'Прогулка', icon: '🚶' },
@@ -43,11 +60,12 @@
     { id: 'h-backup', name: 'Бэкап данных', desc: 'Экспорт JSON раз в неделю' }
   ];
   const DEFAULT_PROJECTS = [
-    { id: uid(), name: 'LifeOS', status: 'В работе', progress: 90, deadline: '2026-08-31', repo: '', live: '', notes: 'PWA-панель дня, работы, денег, проектов и привычек.' }
+    { id: uid(), name: 'LifeOS', status: 'В работе', progress: 90, deadline: DEFAULT_END, repo: '', live: '', notes: 'PWA-панель дня, работы, денег, проектов и привычек.' }
   ];
 
   let memoryStore = null;
-  let storageOk = true;
+  let storageDriver = detectStorageDriver();
+  let storageOk = storageDriver !== 'memory';
   let deferredInstallPrompt = null;
   let calendarFilter = 'all';
   let lastReportHtml = '';
@@ -60,37 +78,125 @@
     return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-5);
   }
 
-  function storageGet() {
-    if (!storageOk) return memoryStore;
+  function canUseWebStorage(name) {
     try {
-      return localStorage.getItem(KEY);
-    } catch (error) {
+      const storage = window[name];
+      const probe = '__lifeos_probe__';
+      storage.setItem(probe, '1');
+      storage.removeItem(probe);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function canUseCookie() {
+    try {
+      document.cookie = 'lifeos_probe=1; path=/; max-age=60; SameSite=Lax';
+      const ok = document.cookie.includes('lifeos_probe=1');
+      document.cookie = 'lifeos_probe=; path=/; max-age=0; SameSite=Lax';
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+
+  function detectStorageDriver() {
+    if (canUseWebStorage('localStorage')) return 'localStorage';
+    if (canUseWebStorage('sessionStorage')) return 'sessionStorage';
+    if (canUseCookie()) return 'cookie';
+    return 'memory';
+  }
+
+  function cookieGet(name) {
+    try {
+      const row = document.cookie.split('; ').find((item) => item.startsWith(`${name}=`));
+      return row ? decodeURIComponent(row.slice(name.length + 1)) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function cookieSet(name, value) {
+    try {
+      document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax`;
+      return cookieGet(name) === value;
+    } catch {
+      return false;
+    }
+  }
+
+  function storageGet(key = KEY) {
+    try {
+      if (storageDriver === 'localStorage') return localStorage.getItem(key);
+      if (storageDriver === 'sessionStorage') return sessionStorage.getItem(key);
+      if (storageDriver === 'cookie') return cookieGet(key);
+      return memoryStore;
+    } catch {
+      storageDriver = 'memory';
       storageOk = false;
-      $('#storageBanner')?.removeAttribute('hidden');
       return memoryStore;
     }
   }
 
-  function storageSet(value) {
-    if (!storageOk) {
-      memoryStore = value;
-      return;
-    }
+  function storageSet(value, key = KEY) {
     try {
-      localStorage.setItem(KEY, value);
-    } catch (error) {
-      storageOk = false;
+      if (storageDriver === 'localStorage') return localStorage.setItem(key, value);
+      if (storageDriver === 'sessionStorage') return sessionStorage.setItem(key, value);
+      if (storageDriver === 'cookie') {
+        if (cookieSet(key, value)) return;
+        storageDriver = canUseWebStorage('sessionStorage') ? 'sessionStorage' : 'memory';
+        storageOk = storageDriver !== 'memory';
+        return storageSet(value, key);
+      }
       memoryStore = value;
-      $('#storageBanner')?.removeAttribute('hidden');
-      toast('localStorage недоступен. Включён временный режим.');
+    } catch {
+      memoryStore = value;
+      storageDriver = 'memory';
+      storageOk = false;
+      toast('Постоянное хранилище недоступно. Сделай экспорт JSON после работы.');
     }
   }
 
-  function defaultState() {
+  function updateStorageBanner() {
+    const banner = $('#storageBanner');
+    const text = $('#storageBannerText');
+    if (!banner || !text) return;
+    if (storageDriver === 'localStorage' || storageDriver === 'cookie') {
+      banner.hidden = true;
+      return;
+    }
+    banner.hidden = false;
+    text.textContent = storageDriver === 'sessionStorage'
+      ? 'localStorage заблокирован браузером. LifeOS использует sessionStorage: данные сохранятся в этой вкладке. Для надёжности делай JSON-бэкап.'
+      : 'Постоянное хранилище недоступно. Данные держатся только до закрытия вкладки. Экспортируй JSON перед выходом.';
+  }
+
+  function cloneWorkConfig(config = DEFAULT_WORK_CONFIG) {
+    const source = config || DEFAULT_WORK_CONFIG;
+    const schedule = {};
+    DAY_LABELS.forEach(([day]) => {
+      schedule[day] = { ...DEFAULT_WORK_CONFIG.schedule[day], ...((source.schedule || {})[day] || {}) };
+      if (timeToMinutes(schedule[day].end) <= timeToMinutes(schedule[day].start)) schedule[day].end = DEFAULT_WORK_CONFIG.schedule[day].end;
+    });
+    const startDate = source.startDate || DEFAULT_START;
+    const endDate = (source.endDate || DEFAULT_END) < startDate ? startDate : (source.endDate || DEFAULT_END);
     return {
-      version: 4,
+      startDate,
+      endDate,
+      targetWorkoutsPerWeek: Number.isFinite(Number(source.targetWorkoutsPerWeek)) ? Number(source.targetWorkoutsPerWeek) : 3,
+      schedule
+    };
+  }
+
+  function defaultState() {
+    const workConfig = cloneWorkConfig(DEFAULT_WORK_CONFIG);
+    return {
+      version: 5,
+      onboardingDone: false,
+      workConfig,
       theme: 'system',
-      selectedDate: clampDate(todayKey()),
+      selectedDate: clampDate(todayKey(), workConfig),
       entries: [],
       dayMeta: {},
       customTypes: ['Документы', 'Встреча', 'Покупки'],
@@ -98,7 +204,7 @@
       habits: DEFAULT_HABITS.map((h) => ({ ...h })),
       habitChecks: {},
       goals: [
-        { id: uid(), name: 'Закрыть рабочий период', current: 0, target: 330, unit: 'часов', auto: 'workHours' },
+        { id: uid(), name: 'Закрыть рабочий период', current: 0, target: Math.round(totalPlannedMinutes(workConfig) / 60), unit: 'часов', auto: 'workHours' },
         { id: uid(), name: 'Серия 10 полных рабочих дней', current: 0, target: 10, unit: 'дней', auto: 'streak' }
       ],
       projects: DEFAULT_PROJECTS.map((p) => ({ ...p, id: uid() })),
@@ -112,32 +218,48 @@
 
   let state = loadState();
 
+  function normalizeLoadedState(parsed) {
+    const base = defaultState();
+    const workConfig = cloneWorkConfig(parsed.workConfig || parsed.config || DEFAULT_WORK_CONFIG);
+    const selectedDate = clampDate(parsed.selectedDate || todayKey(), workConfig);
+    return {
+      ...base,
+      ...parsed,
+      version: 5,
+      onboardingDone: Boolean(parsed.onboardingDone),
+      workConfig,
+      selectedDate,
+      entries: Array.isArray(parsed.entries) ? parsed.entries : [],
+      dayMeta: parsed.dayMeta || {},
+      customTypes: Array.isArray(parsed.customTypes) ? parsed.customTypes : base.customTypes,
+      sportTypes: Array.isArray(parsed.sportTypes) ? parsed.sportTypes : base.sportTypes,
+      habits: Array.isArray(parsed.habits) && parsed.habits.length ? parsed.habits : base.habits,
+      habitChecks: parsed.habitChecks || {},
+      goals: Array.isArray(parsed.goals) && parsed.goals.length ? parsed.goals : base.goals,
+      projects: Array.isArray(parsed.projects) ? parsed.projects : base.projects,
+      focusSessions: Array.isArray(parsed.focusSessions) ? parsed.focusSessions : [],
+      finance: { ...base.finance, ...(parsed.finance || {}) },
+      notifications: { ...base.notifications, ...(parsed.notifications || {}) }
+    };
+  }
+
   function loadState() {
-    const raw = storageGet();
-    if (!raw) return defaultState();
-    try {
-      const parsed = JSON.parse(raw);
-      const base = defaultState();
-      return {
-        ...base,
-        ...parsed,
-        entries: Array.isArray(parsed.entries) ? parsed.entries : [],
-        dayMeta: parsed.dayMeta || {},
-        customTypes: Array.isArray(parsed.customTypes) ? parsed.customTypes : base.customTypes,
-        sportTypes: Array.isArray(parsed.sportTypes) ? parsed.sportTypes : base.sportTypes,
-        habits: Array.isArray(parsed.habits) && parsed.habits.length ? parsed.habits : base.habits,
-        habitChecks: parsed.habitChecks || {},
-        goals: Array.isArray(parsed.goals) && parsed.goals.length ? parsed.goals : base.goals,
-        projects: Array.isArray(parsed.projects) ? parsed.projects : base.projects,
-        focusSessions: Array.isArray(parsed.focusSessions) ? parsed.focusSessions : [],
-        finance: { ...base.finance, ...(parsed.finance || {}) },
-        notifications: { ...base.notifications, ...(parsed.notifications || {}) },
-        selectedDate: clampDate(parsed.selectedDate || todayKey())
-      };
-    } catch (error) {
-      console.warn('LifeOS state parse error', error);
-      return defaultState();
+    const raw = storageGet(KEY);
+    if (raw) {
+      try { return normalizeLoadedState(JSON.parse(raw)); }
+      catch (error) { console.warn('LifeOS state parse error', error); }
     }
+    for (const key of LEGACY_KEYS) {
+      const legacyRaw = storageGet(key);
+      if (!legacyRaw) continue;
+      try {
+        const migrated = normalizeLoadedState(JSON.parse(legacyRaw));
+        migrated.onboardingDone = true;
+        storageSet(JSON.stringify(migrated), KEY);
+        return migrated;
+      } catch { /* ignore legacy parse */ }
+    }
+    return defaultState();
   }
 
   function saveState() {
@@ -160,9 +282,23 @@
     return dateKey(new Date());
   }
 
-  function clampDate(key) {
-    if (!key || key < START) return START;
-    if (key > END) return END;
+  function activeConfig(config = state?.workConfig) {
+    return cloneWorkConfig(config || DEFAULT_WORK_CONFIG);
+  }
+
+  function periodStart(config = state?.workConfig) {
+    return activeConfig(config).startDate;
+  }
+
+  function periodEnd(config = state?.workConfig) {
+    return activeConfig(config).endDate;
+  }
+
+  function clampDate(key, config = state?.workConfig) {
+    const start = periodStart(config);
+    const end = periodEnd(config);
+    if (!key || key < start) return start;
+    if (key > end) return end;
     return key;
   }
 
@@ -176,10 +312,12 @@
     return dateKey(d);
   }
 
-  function allDates() {
+  function allDates(config = state?.workConfig) {
     const out = [];
-    let cursor = START;
-    while (cursor <= END) {
+    const start = periodStart(config);
+    const end = periodEnd(config);
+    let cursor = start;
+    while (cursor <= end) {
       out.push(cursor);
       cursor = addDays(cursor, 1);
     }
@@ -215,12 +353,28 @@
     return Math.max(0, Math.min(100, Math.round((part / total) * 100)));
   }
 
-  function workPlan(date) {
+  function workPlan(date, config = state?.workConfig) {
     const d = toDate(date);
-    const day = d.getDay();
-    if (day === 0) return { minutes: 0, start: null, end: null, label: 'Выходной' };
-    if (day === 6) return { minutes: 240, start: '10:00', end: '14:00', label: 'Суббота 10:00–14:00' };
-    return { minutes: 420, start: '10:00', end: '17:00', label: 'Будни 10:00–17:00' };
+    const day = String(d.getDay());
+    const cfg = activeConfig(config);
+    const item = cfg.schedule?.[day] || DEFAULT_WORK_CONFIG.schedule[day];
+    if (!item?.enabled) return { minutes: 0, start: null, end: null, label: 'Выходной' };
+    const start = item.start || '10:00';
+    const end = item.end || '17:00';
+    const minutes = Math.max(0, timeToMinutes(end) - timeToMinutes(start));
+    const label = `${DAY_LABELS.find(([id]) => id === day)?.[1] || ''} ${start}–${end}`;
+    return { minutes, start, end, label };
+  }
+
+  function totalPlannedMinutes(config = state?.workConfig) {
+    return allDates(config).reduce((sum, date) => sum + workPlan(date, config).minutes, 0);
+  }
+
+  function scheduleSummary(config = state?.workConfig) {
+    const cfg = activeConfig(config);
+    const enabled = DAY_LABELS.filter(([day]) => cfg.schedule[day]?.enabled);
+    if (!enabled.length) return 'Рабочие дни не выбраны';
+    return enabled.map(([day, label]) => `${label}: ${cfg.schedule[day].start}–${cfg.schedule[day].end}`).join(' · ');
   }
 
   function isPastOrToday(key) {
@@ -350,7 +504,7 @@
   function currentStreak() {
     let date = clampDate(todayKey());
     let streak = 0;
-    while (date >= START) {
+    while (date >= periodStart()) {
       const st = dayStatus(date);
       if (!st.plan.minutes) {
         date = addDays(date, -1);
@@ -385,17 +539,18 @@
   }
 
   function localStorageSafeGet(key) {
-    try { return localStorage.getItem(key); } catch { return null; }
+    return storageGet(key);
   }
 
   function localStorageSafeSet(key, value) {
-    try { localStorage.setItem(key, value); } catch { /* ignore */ }
+    storageSet(value, key);
   }
 
   function setSelectedDate(date) {
     state.selectedDate = clampDate(date);
     $('#selectedDate').value = state.selectedDate;
     $('#entryDate').value = state.selectedDate;
+    if ($('#sportDate')) $('#sportDate').value = state.selectedDate;
     saveState();
     renderAll();
   }
@@ -434,8 +589,74 @@
     if ($('#themeSelect')) $('#themeSelect').value = state.theme || 'system';
   }
 
+  function renderScheduleGrid(containerSelector, prefix, config = state.workConfig) {
+    const container = $(containerSelector);
+    if (!container) return;
+    const cfg = activeConfig(config);
+    container.innerHTML = DAY_LABELS.map(([day, label]) => {
+      const item = cfg.schedule[day] || DEFAULT_WORK_CONFIG.schedule[day];
+      return `
+        <div class="schedule-row" data-day="${day}">
+          <label class="schedule-toggle"><input type="checkbox" id="${prefix}Day${day}" ${item.enabled ? 'checked' : ''}> <strong>${label}</strong></label>
+          <input class="input" type="time" id="${prefix}Start${day}" value="${escapeHtml(item.start)}" step="60">
+          <input class="input" type="time" id="${prefix}End${day}" value="${escapeHtml(item.end)}" step="60">
+        </div>
+      `;
+    }).join('');
+  }
+
+  function fillConfigForm(prefix, config = state.workConfig) {
+    const cfg = activeConfig(config);
+    const start = $(`#${prefix}StartDate`);
+    const end = $(`#${prefix}EndDate`);
+    const workouts = $(`#${prefix}WorkoutTarget`);
+    if (start) start.value = cfg.startDate;
+    if (end) end.value = cfg.endDate;
+    if (workouts) workouts.value = cfg.targetWorkoutsPerWeek;
+    renderScheduleGrid(prefix === 'setup' ? '#setupScheduleGrid' : '#settingsScheduleGrid', prefix, cfg);
+  }
+
+  function readConfigForm(prefix) {
+    const startDate = $(`#${prefix}StartDate`)?.value || DEFAULT_START;
+    const endDate = $(`#${prefix}EndDate`)?.value || DEFAULT_END;
+    const schedule = {};
+    DAY_LABELS.forEach(([day]) => {
+      const enabled = Boolean($(`#${prefix}Day${day}`)?.checked);
+      let start = $(`#${prefix}Start${day}`)?.value || DEFAULT_WORK_CONFIG.schedule[day].start;
+      let end = $(`#${prefix}End${day}`)?.value || DEFAULT_WORK_CONFIG.schedule[day].end;
+      if (timeToMinutes(end) <= timeToMinutes(start)) end = minutesToTime(Math.min(23 * 60 + 59, timeToMinutes(start) + 60));
+      schedule[day] = { enabled, start, end };
+    });
+    const targetWorkoutsPerWeek = Math.max(0, Math.min(14, Number($(`#${prefix}WorkoutTarget`)?.value || 0)));
+    const normalized = cloneWorkConfig({ startDate, endDate: endDate < startDate ? startDate : endDate, targetWorkoutsPerWeek, schedule });
+    return normalized;
+  }
+
+  function applyWorkConfig(config, onboardingDone = state.onboardingDone) {
+    state.workConfig = cloneWorkConfig(config);
+    state.onboardingDone = onboardingDone;
+    state.selectedDate = clampDate(state.selectedDate || todayKey());
+    const workGoal = state.goals.find((goal) => goal.auto === 'workHours');
+    if (workGoal) workGoal.target = Math.max(1, Math.round(totalPlannedMinutes() / 60));
+    saveState();
+    renderAll();
+  }
+
+  function renderConfigForms() {
+    fillConfigForm('setup');
+    fillConfigForm('config');
+  }
+
+  function renderOnboarding() {
+    const panel = $('#onboarding');
+    if (!panel) return;
+    panel.classList.toggle('hidden', Boolean(state.onboardingDone));
+  }
+
   function renderAll() {
     applyTheme();
+    updateStorageBanner();
+    renderOnboarding();
     renderHero();
     renderDashboard();
     renderWork();
@@ -450,6 +671,7 @@
     renderProjects();
     renderAchievements();
     renderFinanceForm();
+    renderConfigForms();
     renderCustomTypeSettings();
     renderEntryTypeOptions();
     renderSportTypeOptions();
@@ -464,12 +686,26 @@
     $('#metricWork').textContent = hm(stats.work);
     $('#metricLeft').textContent = hm(stats.left);
     $('#metricLevel').textContent = `Lv. ${lvl.level}`;
+    $('#heroPeriodTitle').textContent = `${formatDate(periodStart(), { year: 'numeric' })} — ${formatDate(periodEnd(), { year: 'numeric' })}`;
+    $('#heroScheduleSummary').textContent = `${scheduleSummary()} · спорт: ${activeConfig().targetWorkoutsPerWeek} трен./нед.`;
+    $('#reportPeriodTitle').textContent = `${periodStart()} — ${periodEnd()}`;
+    syncDateInputs();
     const need = stats.futureWorkDays ? Math.ceil(stats.left / stats.futureWorkDays) : stats.left;
     const delta = stats.workPast - stats.planPast;
     const statusText = delta >= 0
       ? `Идёшь по плану: запас ${hm(delta)}. Всего закрыто ${hm(stats.work)} из ${hm(stats.plan)}.`
       : `Антихаос: отставание ${hm(Math.abs(delta))}. Нужно в среднем ${hm(need)} в каждый оставшийся рабочий день.`;
     $('#heroAlert').textContent = statusText;
+  }
+
+  function syncDateInputs() {
+    ['#selectedDate', '#entryDate', '#sportDate'].forEach((selector) => {
+      const input = $(selector);
+      if (!input) return;
+      input.min = periodStart();
+      input.max = periodEnd();
+      if (!input.value || input.value < periodStart() || input.value > periodEnd()) input.value = state.selectedDate;
+    });
   }
 
   function renderDashboard() {
@@ -552,13 +788,19 @@
   }
 
   function renderQuickTemplates() {
-    $('#quickTemplates').innerHTML = QUICK_TEMPLATES.map((template, index) => `
-      <button class="quick-card" data-template="${index}">
-        <strong>${template.icon} ${escapeHtml(template.type)}</strong>
-        <span>${template.start}–${template.end}</span>
-        <span>${escapeHtml(template.note)}</span>
-      </button>
-    `).join('');
+    const plan = workPlan(state.selectedDate);
+    $('#quickTemplates').innerHTML = QUICK_TEMPLATES.map((template, index) => {
+      const start = template.type === 'Работа' && plan.start ? plan.start : template.start;
+      const end = template.type === 'Работа' && plan.end ? plan.end : template.end;
+      const note = template.type === 'Работа' ? (plan.minutes ? plan.label : 'Сегодня выходной по графику') : template.note;
+      return `
+        <button class="quick-card" data-template="${index}">
+          <strong>${template.icon} ${escapeHtml(template.type)}</strong>
+          <span>${start}–${end}</span>
+          <span>${escapeHtml(note)}</span>
+        </button>
+      `;
+    }).join('');
   }
 
   function renderTimelineVisual(selector, date) {
@@ -825,14 +1067,17 @@
     renderSportTypeOptions();
     renderSportQuickGrid();
     const stats = sportStats();
-    const thisWeek = stats.entries.filter((entry) => {
+    const weekEntries = stats.entries.filter((entry) => {
       const diff = Math.floor((toDate(state.selectedDate) - toDate(entry.date)) / (24 * 60 * 60 * 1000));
       return diff >= 0 && diff < 7;
-    }).reduce((sum, entry) => sum + Math.max(0, timeToMinutes(entry.end) - timeToMinutes(entry.start)), 0);
+    });
+    const thisWeek = weekEntries.reduce((sum, entry) => sum + Math.max(0, timeToMinutes(entry.end) - timeToMinutes(entry.start)), 0);
+    const targetWorkouts = Number(activeConfig().targetWorkoutsPerWeek || 0);
     const metrics = [
       ['Всего спорта', hm(stats.total), `${stats.entries.length} записей`],
       ['Сегодня', hm(stats.today), 'выбранная дата'],
-      ['За 7 дней', hm(thisWeek), 'от выбранной даты назад'],
+      ['За 7 дней', hm(thisWeek), `${weekEntries.length}/${targetWorkouts} трен.`],
+      ['Недельная цель', `${percent(weekEntries.length, Math.max(1, targetWorkouts))}%`, targetWorkouts ? `${weekEntries.length} из ${targetWorkouts}` : 'цель выключена'],
       ['Калории', stats.calories ? `${stats.calories} ккал` : '—', 'по введённым данным'],
       ['Любимое', stats.favorite ? stats.favorite[0] : '—', stats.favorite ? hm(stats.favorite[1]) : 'нет данных'],
       ['Активности', String(stats.byActivity.size), 'видов спорта']
@@ -845,6 +1090,7 @@
       insights.push(['Ритм', `Всего спортивной активности: ${hm(stats.total, false)}. Средняя сессия: ${hm(stats.total / stats.entries.length)}.`]);
       if (stats.today === 0) insights.push(['Сегодня', 'На выбранную дату спорта пока нет. Можно добавить через шаблон или форму.']);
       else insights.push(['Сегодня', `На выбранную дату уже есть ${hm(stats.today, false)} активности.`]);
+      if (targetWorkouts && weekEntries.length < targetWorkouts) insights.push(['Недельная цель', `Нужно ещё ${targetWorkouts - weekEntries.length} трен. до цели ${targetWorkouts}/нед.`]);
       if (thisWeek < 120) insights.push(['Рекомендация', 'За последние 7 выбранных дней спорта меньше 2 часов. Добавь прогулку или лёгкую тренировку.']);
     }
     $('#sportInsight').innerHTML = insights.map(([t, p]) => `<div class="insight"><strong>${escapeHtml(t)}</strong><p>${escapeHtml(p)}</p></div>`).join('');
@@ -983,29 +1229,39 @@
     `).join('') : '<div class="empty-state">Проекты пока не добавлены.</div>';
   }
 
-  function achievements() {
+  function nextMilestones(value, step, count = 4, start = step) {
+    const done = Math.floor(value / step) * step;
+    const rows = [];
+    for (let i = 0; i < count; i++) rows.push(Math.max(start, done + step * i));
+    return Array.from(new Set(rows)).filter((n) => n > 0).slice(0, count);
+  }
+
+  function achievementCatalog() {
     const stats = periodStats();
     const focus = state.focusSessions.reduce((sum, s) => sum + (s.minutes || 0), 0);
     const entries = state.entries.length;
     const projectsDone = state.projects.filter((p) => Number(p.progress || 0) >= 100 || p.status === 'Готово').length;
-    const sportMinutes = sportEntries().reduce((sum, entry) => sum + Math.max(0, timeToMinutes(entry.end) - timeToMinutes(entry.start)), 0);
+    const sports = sportStats();
+    const sportMinutes = sports.total;
     const notes = Object.values(state.dayMeta).filter((m) => m.note && m.note.trim()).length;
     const jsonBackups = Number(localStorageSafeGet('lifeos.lastBackupCount') || 0);
-    return [
-      ['Первый след', entries >= 1, 'Добавить первую запись времени.'],
-      ['Полный рабочий день', stats.fullDays >= 1, 'Закрыть один рабочий день на 100%.'],
-      ['Стабильный', stats.fullDays >= 5, 'Закрыть 5 полных рабочих дней.'],
-      ['Машина', stats.fullDays >= 20, 'Закрыть 20 полных рабочих дней.'],
-      ['Период под контролем', stats.pct >= 100, 'Закрыть весь план 330 часов.'],
-      ['Фокусник', focus >= 120, 'Накопить 2 часа фокус-сессий.'],
-      ['Спорт включён', sportEntries().length >= 1, 'Добавить первую спортивную активность.'],
-      ['Движение', sportMinutes >= 300, 'Накопить 5 часов спорта или прогулок.'],
-      ['Архивариус', jsonBackups >= 1, 'Сделать экспорт JSON.'],
-      ['Дневник живёт', notes >= 7, 'Оставить 7 заметок дня.'],
-      ['Проектный режим', state.projects.length >= 3, 'Добавить 3 проекта.'],
-      ['Довёл до релиза', projectsDone >= 1, 'Закрыть проект на 100% или статусом Готово.'],
-      ['Календарик стукача', state.theme === 'snitch', 'Включить пасхальную тему.' ]
+    const targetPerWeek = Math.max(0, Number(activeConfig().targetWorkoutsPerWeek || 0));
+    const catalog = [
+      ['Первый след', entries >= 1, entries, 1, 'Добавить первую запись времени.'],
+      ['Полный рабочий день', stats.fullDays >= 1, stats.fullDays, 1, 'Закрыть один рабочий день на 100%.'],
+      ['Период под контролем', stats.pct >= 100, stats.work, stats.plan, 'Закрыть весь выбранный рабочий план.'],
+      ['Архивариус', jsonBackups >= 1, jsonBackups, 1, 'Сделать экспорт JSON.'],
+      ['Календарик стукача', state.theme === 'snitch', state.theme === 'snitch' ? 1 : 0, 1, 'Включить пасхальную тему.']
     ];
+    nextMilestones(Math.floor(stats.work / 60), 10, 6).forEach((target) => catalog.push([`Рабочие часы ×${target}`, Math.floor(stats.work / 60) >= target, Math.floor(stats.work / 60), target, `Накопить ${target} часов зачтённой работы.`]));
+    nextMilestones(stats.fullDays, 5, 6).forEach((target) => catalog.push([`Полные дни ×${target}`, stats.fullDays >= target, stats.fullDays, target, `Закрыть ${target} полных рабочих дней.`]));
+    nextMilestones(Math.floor(focus / 60), 2, 5).forEach((target) => catalog.push([`Фокус ×${target}ч`, Math.floor(focus / 60) >= target, Math.floor(focus / 60), target, `Накопить ${target} часов фокуса.`]));
+    nextMilestones(Math.floor(sportMinutes / 60), 2, 5).forEach((target) => catalog.push([`Спорт ×${target}ч`, Math.floor(sportMinutes / 60) >= target, Math.floor(sportMinutes / 60), target, `Накопить ${target} часов спорта или прогулок.`]));
+    nextMilestones(sports.entries.length, Math.max(1, targetPerWeek), 5).forEach((target) => catalog.push([`Тренировки ×${target}`, sports.entries.length >= target, sports.entries.length, target, `Сделать ${target} спортивных активностей. Цель: ${targetPerWeek}/нед.`]));
+    nextMilestones(notes, 7, 5).forEach((target) => catalog.push([`Дневник ×${target}`, notes >= target, notes, target, `Оставить ${target} заметок дня.`]));
+    nextMilestones(state.projects.length, 3, 4).forEach((target) => catalog.push([`Проекты ×${target}`, state.projects.length >= target, state.projects.length, target, `Добавить ${target} проектов.`]));
+    nextMilestones(projectsDone, 1, 4).forEach((target) => catalog.push([`Релизы ×${target}`, projectsDone >= target, projectsDone, target, `Закрыть ${target} проектов на 100% или статусом Готово.`]));
+    return catalog;
   }
 
   function renderAchievements() {
@@ -1015,13 +1271,21 @@
       <div class="xp-level">Lv. ${lvl.level}</div>
       <p class="muted">${xp} XP · до следующего уровня ${Math.max(0, lvl.need - lvl.into)} XP</p>
       <div class="progress big"><span style="width:${lvl.pct}%"></span></div>
+      <p class="muted small">Ачивки бесконечные: LifeOS генерирует новые рубежи по часам, дням, спорту, фокусу, заметкам и проектам.</p>
     `;
-    $('#achievementList').innerHTML = achievements().map(([name, unlocked, desc]) => `
-      <article class="list-card achievement ${unlocked ? 'unlocked' : 'locked'}">
-        <strong>${unlocked ? '✅' : '🔒'} ${escapeHtml(name)}</strong>
-        <p>${escapeHtml(desc)}</p>
-      </article>
-    `).join('');
+    const rows = achievementCatalog()
+      .sort((a, b) => Number(b[1]) - Number(a[1]) || (a[3] - b[3]))
+      .slice(0, 42);
+    $('#achievementList').innerHTML = rows.map(([name, unlocked, current, target, desc]) => {
+      const pct = percent(current, target);
+      return `
+        <article class="list-card achievement ${unlocked ? 'unlocked' : 'locked'}">
+          <strong>${unlocked ? '✅' : '🔒'} ${escapeHtml(name)}</strong>
+          <p>${escapeHtml(desc)} · ${Math.min(current, target)} / ${target}</p>
+          <div class="progress"><span style="width:${pct}%"></span></div>
+        </article>
+      `;
+    }).join('');
   }
 
   function renderReportPreview(force = true) {
@@ -1041,7 +1305,7 @@
     const typeRows = Array.from(typeMinutesAll().entries()).sort((a, b) => b[1] - a[1]);
     const body = `
       <h2>LifeOS Report</h2>
-      <p><strong>Период:</strong> 03.07.2026 — 31.08.2026</p>
+      <p><strong>Период:</strong> ${periodStart()} — ${periodEnd()}</p>
       <p><strong>План:</strong> ${hm(stats.plan, false)} · <strong>Факт:</strong> ${hm(stats.work, false)} · <strong>Выполнение:</strong> ${stats.pct}%</p>
       <p><strong>Осталось:</strong> ${hm(stats.left, false)} · <strong>Отставание по текущей дате:</strong> ${hm(stats.lostPast, false)}</p>
       <p><strong>Полных дней:</strong> ${stats.fullDays} · <strong>Частичных:</strong> ${stats.partialDays} · <strong>Пустых:</strong> ${stats.missedDays}</p>
@@ -1154,7 +1418,7 @@
   function checkReminders() {
     const now = new Date();
     const date = todayKey();
-    if (date < START || date > END) return;
+    if (date < periodStart() || date > periodEnd()) return;
     const plan = workPlan(date);
     if (!plan.minutes) return;
     const mins = now.getHours() * 60 + now.getMinutes();
@@ -1267,6 +1531,19 @@
     $('#removeAutoWorkBtn').addEventListener('click', () => removeAutoWork());
     $('#copyYesterdayBtn').addEventListener('click', copyYesterday);
 
+    $('#setupDefaultBtn')?.addEventListener('click', () => fillConfigForm('setup', DEFAULT_WORK_CONFIG));
+    $('#configDefaultBtn')?.addEventListener('click', () => fillConfigForm('config', DEFAULT_WORK_CONFIG));
+    $('#setupForm')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      applyWorkConfig(readConfigForm('setup'), true);
+      toast('LifeOS настроен. График можно изменить в настройках.');
+    });
+    $('#configForm')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      applyWorkConfig(readConfigForm('config'), true);
+      toast('График и спортивная цель обновлены.');
+    });
+
     $('#entryType').addEventListener('change', (e) => $('#customTypeWrap').classList.toggle('hidden', e.target.value !== 'Другое'));
     $('#addQuickCustomTypeBtn').addEventListener('click', () => {
       const input = $('#quickCustomType');
@@ -1349,7 +1626,7 @@
       try {
         const text = await file.text();
         const parsed = JSON.parse(text);
-        state = { ...defaultState(), ...parsed, selectedDate: clampDate(parsed.selectedDate || todayKey()) };
+        state = normalizeLoadedState(parsed);
         saveState(); renderAll(); toast('JSON импортирован.');
       } catch (error) {
         toast('Не удалось импортировать JSON.');
@@ -1445,24 +1722,11 @@
   }
 
   function migrateOldData() {
-    // Мягкая миграция из ранних сборок LifeOS, если пользователь уже что-то ввёл.
-    const oldKeys = ['lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
-    if (storageGet()) return;
-    for (const key of oldKeys) {
-      try {
-        const raw = localStorage.getItem(key);
-        if (!raw) continue;
-        const old = JSON.parse(raw);
-        state = { ...defaultState(), ...old, selectedDate: clampDate(old.selectedDate || todayKey()) };
-        saveState();
-        toast('Старые данные LifeOS найдены и перенесены.');
-        break;
-      } catch { /* ignore */ }
-    }
+    // Миграция уже выполняется в loadState через текущий storageDriver.
   }
 
   function bootstrap() {
-    if (!storageOk) $('#storageBanner')?.removeAttribute('hidden');
+    updateStorageBanner();
     migrateOldData();
     applyTheme();
     initEvents();
