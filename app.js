@@ -1,10 +1,10 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '13.0.0-today-screen';
-  const DATA_VERSION = 13;
-  const KEY = 'lifeos.v13.today';
-  const LEGACY_KEYS = ['lifeos.v12.stability','lifeos.v11.v8base.complete','lifeos.v10.stable','lifeos.v9.complete','lifeos.v8.rings','lifeos.v7.design', 'lifeos.v5.configurable', 'lifeos.v4.final', 'lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
+  const APP_VERSION = '14.0.0-active-timer';
+  const DATA_VERSION = 14;
+  const KEY = 'lifeos.v14.active';
+  const LEGACY_KEYS = ['lifeos.v13.today','lifeos.v12.stability','lifeos.v11.v8base.complete','lifeos.v10.stable','lifeos.v9.complete','lifeos.v8.rings','lifeos.v7.design', 'lifeos.v5.configurable', 'lifeos.v4.final', 'lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
   const DEFAULT_START = '2026-07-03';
   const DEFAULT_END = '2026-08-31';
   const DAY_LABELS = [
@@ -50,7 +50,7 @@
     ['🧊', 'холодно']
   ];
   const BASE_TYPES = [
-    'Работа', 'Учёба', 'GitHub-проект', 'Фокус-сессия', 'Обед', 'Дорога', 'Телефон', 'Отдых',
+    'Работа', 'Учёба', 'GitHub-проект', 'Фокус-сессия', 'Перерыв', 'Обед', 'Дорога', 'Телефон', 'Отдых',
     'Спорт', 'Прогулка', 'Здоровье', 'Домашние дела', 'Покупки', 'Встреча', 'Документы',
     'Саморазвитие', 'Саморазвитие: Проект', 'Саморазвитие: Книга', 'Саморазвитие: Курс', 'Саморазвитие: Практика',
     'Творчество', 'Музыка', 'Семья', 'Друзья', 'Сон', 'Прочее', 'Другое'
@@ -287,7 +287,8 @@
       focusSessions: [],
       finance: { hourRate: 350, fullDayBonus: 0, missPenalty: 0, moneyTarget: 0 },
       notifications: { enabled: false, lastFired: {} },
-      activeTimer: { running: false, category: '', type: '', startedAt: '', note: '' },
+      activeTimer: { running: false, paused: false, category: '', type: '', startedAt: '', pausedAt: '', accumulatedMs: 0, note: '', source: 'today' },
+      activeTimerHistory: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -327,7 +328,8 @@
       focusSessions: Array.isArray(parsed.focusSessions) ? parsed.focusSessions : [],
       finance: { ...base.finance, ...(parsed.finance || {}) },
       notifications: { ...base.notifications, ...(parsed.notifications || {}) },
-      activeTimer: { ...base.activeTimer, ...(parsed.activeTimer || {}) }
+      activeTimer: { ...base.activeTimer, ...(parsed.activeTimer || {}) },
+      activeTimerHistory: Array.isArray(parsed.activeTimerHistory) ? parsed.activeTimerHistory : []
     };
   }
 
@@ -961,6 +963,7 @@
     renderGoals();
     renderHabits();
     renderFocus();
+    renderActiveTimers();
     renderSport();
     renderSelfDev();
     renderMoney();
@@ -1057,10 +1060,14 @@
 
   function activeTimerInfo() {
     const active = state.activeTimer || {};
-    if (!active.running || !active.startedAt) return null;
+    if ((!active.running && !active.paused) || !active.startedAt) return null;
     const started = new Date(active.startedAt);
     const now = new Date();
-    const elapsed = Math.max(0, Math.round((now - started) / 60000));
+    const accumulated = Number(active.accumulatedMs || 0);
+    const liveMs = active.paused ? 0 : Math.max(0, now - started);
+    const elapsedMs = Math.max(0, accumulated + liveMs);
+    const elapsed = Math.max(0, Math.floor(elapsedMs / 60000));
+    const seconds = Math.max(0, Math.floor(elapsedMs / 1000));
     const startMin = started.getHours() * 60 + started.getMinutes();
     return {
       ...active,
@@ -1068,14 +1075,24 @@
       date: dateKey(started),
       start: minutesToTime(startMin),
       elapsed,
-      label: active.category === 'work' ? 'Работа' : active.category === 'sport' ? 'Спорт' : active.category === 'self' ? 'Саморазвитие' : (active.type || 'Активность')
+      seconds,
+      elapsedMs,
+      label: active.category === 'work' ? 'Работа' : active.category === 'sport' ? 'Спорт' : active.category === 'self' ? 'Саморазвитие' : active.category === 'break' ? 'Перерыв' : (active.type || 'Активность')
     };
+  }
+
+  function formatHms(totalSeconds) {
+    const sec = Math.max(0, Number(totalSeconds || 0));
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   }
 
   function nextActionForToday(date = state.selectedDate) {
     const st = dayStatus(date);
     const active = activeTimerInfo();
-    if (active) return `Идёт ${active.label.toLowerCase()}: ${hm(active.elapsed)}. Заверши интервал, когда закончишь.`;
+    if (active) return `${active.paused ? 'Пауза' : 'Идёт'}: ${active.label.toLowerCase()} · ${formatHms(active.seconds)}. Сохрани интервал, когда закончишь.`;
     if (st.plan.minutes && st.work < st.plan.minutes) return `Добей работу: осталось ${hm(st.plan.minutes - st.work)} до плана дня.`;
     const sportTarget = Math.max(0, Number(activeConfig().targetWorkoutsPerWeek || 0));
     const sportWeek = weekEntriesFrom(sportEntries(), date).length;
@@ -1108,25 +1125,116 @@
       </div>
     `).join('');
     $('#todayActiveState').innerHTML = active ? `
-      <div class="active-session running">
-        <div><strong>Сейчас: ${escapeHtml(active.label)}</strong><p>Старт ${escapeHtml(active.start)} · прошло ${escapeHtml(hm(active.elapsed))}</p></div>
+      <div class="active-session running ${active.paused ? 'paused' : ''}">
+        <div><strong>${active.paused ? 'Пауза' : 'Сейчас'}: ${escapeHtml(active.label)}</strong><p>Старт ${escapeHtml(active.start)} · ${escapeHtml(formatHms(active.seconds))}</p></div>
         <div class="button-row mini-actions">
-          <button class="primary-btn" id="finishActiveTimerBtn" type="button">Завершить</button>
+          <button class="soft-btn" data-jump="timers" type="button">Открыть таймер</button>
+          <button class="primary-btn" id="finishActiveTimerBtn" type="button">Сохранить</button>
           <button class="soft-btn" id="cancelActiveTimerBtn" type="button">Отменить</button>
         </div>
       </div>
     ` : `
       <div class="active-session">
         <div><strong>Активного интервала нет</strong><p>Запусти живой таймер: работа, спорт или саморазвитие. При завершении запись попадёт в журнал.</p></div>
+        <button class="soft-btn" data-jump="timers" type="button">Открыть таймеры</button>
       </div>
     `;
   }
 
-  function startActiveTimer(category, type) {
+  function studioOptionsForCategory(category) {
+    if (category === 'sport') return [...BASE_SPORT_TYPES, ...(state.sportTypes || [])];
+    if (category === 'self') return [...BASE_SELF_TYPES, ...(state.selfDevTypes || [])];
+    if (category === 'break') return ['Перерыв', 'Обед', 'Прогулка', 'Отдых'];
+    if (category === 'custom') return [...BASE_TYPES, ...(state.customTypes || []), 'Другое'];
+    return ['Работа', 'GitHub-проект', 'Фокус-сессия', 'Документы', 'Встреча'];
+  }
+
+  function renderStudioTypeOptions() {
+    const select = $('#studioType');
+    if (!select) return;
+    const category = $('#studioCategory')?.value || state.activeTimer?.category || 'work';
+    const current = select.value;
+    select.innerHTML = studioOptionsForCategory(category).map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+    if (current && Array.from(select.options).some((opt) => opt.value === current)) select.value = current;
+    if (category === 'custom') select.value = select.value || 'Другое';
+    $('#studioCustomWrap')?.classList.toggle('hidden', category !== 'custom' && select.value !== 'Другое' && select.value !== 'Свой вариант' && select.value !== 'Свой спорт');
+  }
+
+  function renderActiveTimers() {
+    renderStudioTypeOptions();
     const active = activeTimerInfo();
-    if (active) return toast('Сначала заверши текущий активный интервал.');
-    state.activeTimer = { running: true, category, type, startedAt: new Date().toISOString(), note: 'Живой таймер Today Screen' };
+    const label = $('#studioStateLabel');
+    const elapsed = $('#studioElapsed');
+    const sub = $('#studioSubline');
+    if (label && elapsed && sub) {
+      if (active) {
+        label.textContent = active.paused ? 'Пауза активного интервала' : `Идёт: ${active.label}`;
+        elapsed.textContent = formatHms(active.seconds);
+        sub.textContent = `${active.type || active.label} · старт ${active.start} · ${active.note || 'без заметки'}`;
+      } else {
+        label.textContent = 'Активного интервала нет';
+        elapsed.textContent = '00:00:00';
+        sub.textContent = 'Выбери тип активности и запусти таймер.';
+      }
+    }
+    $('#studioStartBtn')?.toggleAttribute('disabled', Boolean(active && !active.paused));
+    $('#studioPauseBtn')?.toggleAttribute('disabled', Boolean(!active || active.paused));
+    $('#studioResumeBtn')?.toggleAttribute('disabled', Boolean(!active || !active.paused));
+    $('#studioFinishBtn')?.toggleAttribute('disabled', Boolean(!active));
+    $('#studioCancelBtn')?.toggleAttribute('disabled', Boolean(!active));
+    const history = (state.activeTimerHistory || []).slice().sort((a, b) => (b.endedAt || '').localeCompare(a.endedAt || '')).slice(0, 12).map((s) => ({
+      id: s.id, date: s.date, start: s.start, end: s.end, type: s.type || s.label || 'Таймер', note: `${s.label || 'Активность'} · ${hm(s.minutes || 0)} · ${s.saved ? 'сохранено в журнал' : 'без записи'}`
+    }));
+    renderEntries('#activeTimerHistory', history, true);
+  }
+
+  function startActiveTimer(category, type, note = '') {
+    const active = activeTimerInfo();
+    if (active && !active.paused) return toast('Сначала сохрани или поставь на паузу текущий интервал.');
+    if (active && active.paused) return resumeActiveTimer();
+    state.activeTimer = { running: true, paused: false, category, type, startedAt: new Date().toISOString(), pausedAt: '', accumulatedMs: 0, note: note || 'Живой таймер LifeOS v14', source: 'active-timer' };
     saveState(); renderAll(); toast(`${type} запущено.`);
+  }
+
+  function pauseActiveTimer() {
+    const active = state.activeTimer || {};
+    if (!active.running || active.paused || !active.startedAt) return toast('Нет активного таймера для паузы.');
+    const elapsedLive = Math.max(0, Date.now() - new Date(active.startedAt).getTime());
+    state.activeTimer = { ...active, running: false, paused: true, pausedAt: new Date().toISOString(), accumulatedMs: Number(active.accumulatedMs || 0) + elapsedLive };
+    saveState(); renderAll(); toast('Таймер на паузе.');
+  }
+
+  function resumeActiveTimer() {
+    const active = state.activeTimer || {};
+    if (!active.paused) return toast('Таймер не на паузе.');
+    state.activeTimer = { ...active, running: true, paused: false, startedAt: new Date().toISOString(), pausedAt: '' };
+    saveState(); renderAll(); toast('Таймер продолжен.');
+  }
+
+  function startBreakTimer() {
+    const active = activeTimerInfo();
+    if (active && !active.paused) pauseActiveTimer();
+    startActiveTimer('break', 'Перерыв', 'Перерыв из Active Timer');
+  }
+
+  function pushTimerHistory(active, end, saved) {
+    state.activeTimerHistory = Array.isArray(state.activeTimerHistory) ? state.activeTimerHistory : [];
+    state.activeTimerHistory.push({
+      id: uid(),
+      date: active.date,
+      category: active.category,
+      type: active.type,
+      label: active.label,
+      start: active.start,
+      end,
+      minutes: Math.max(1, active.elapsed),
+      seconds: active.seconds,
+      startedAt: active.started.toISOString(),
+      endedAt: new Date().toISOString(),
+      note: active.note || '',
+      saved: Boolean(saved)
+    });
+    state.activeTimerHistory = state.activeTimerHistory.slice(-80);
   }
 
   function finishActiveTimer() {
@@ -1135,25 +1243,48 @@
     const now = new Date();
     const end = minutesToTime(now.getHours() * 60 + now.getMinutes());
     const start = active.start;
-    if (timeToMinutes(end) <= timeToMinutes(start)) {
-      state.activeTimer = { running: false, category: '', type: '', startedAt: '', note: '' };
-      saveState(); renderAll();
-      return toast('Интервал слишком короткий или перешёл через полночь. Запись не добавлена.');
+    const validWallClock = timeToMinutes(end) > timeToMinutes(start);
+    let saved = false;
+    if (validWallClock && active.elapsed >= 1) {
+      if (active.category === 'sport') {
+        addSportEntry({ date: active.date, start, end, activity: active.type || 'Тренировка', intensity: 'Средняя', calories: 0, note: active.note || 'Живой таймер спорта' });
+      } else if (active.category === 'self') {
+        addSelfEntry({ date: active.date, start, end, activity: active.type || 'Саморазвитие', note: active.note || 'Живой таймер саморазвития' });
+      } else if (active.category === 'break') {
+        addEntry({ date: active.date, start, end, type: active.type || 'Перерыв', note: active.note || 'Живой таймер перерыва' });
+      } else {
+        addEntry({ date: active.date, start, end, type: active.type || 'Работа', note: active.note || 'Живой таймер работы' });
+      }
+      saved = true;
     }
-    if (active.category === 'sport') {
-      addSportEntry({ date: active.date, start, end, activity: active.type || 'Тренировка', intensity: 'Средняя', calories: 0, note: active.note || 'Живой таймер спорта' });
-    } else if (active.category === 'self') {
-      addSelfEntry({ date: active.date, start, end, activity: active.type || 'Саморазвитие', note: active.note || 'Живой таймер саморазвития' });
-    } else {
-      addEntry({ date: active.date, start, end, type: active.type || 'Работа', note: active.note || 'Живой таймер работы' });
-    }
-    state.activeTimer = { running: false, category: '', type: '', startedAt: '', note: '' };
-    saveState(); renderAll(); toast('Интервал завершён и сохранён.');
+    pushTimerHistory(active, end, saved);
+    state.activeTimer = { running: false, paused: false, category: '', type: '', startedAt: '', pausedAt: '', accumulatedMs: 0, note: '', source: '' };
+    saveState(); renderAll(); toast(saved ? 'Интервал завершён и сохранён.' : 'Интервал завершён. Запись не добавлена: слишком коротко или переход через полночь.');
   }
 
   function cancelActiveTimer() {
-    state.activeTimer = { running: false, category: '', type: '', startedAt: '', note: '' };
+    const active = activeTimerInfo();
+    if (active) pushTimerHistory(active, minutesToTime(new Date().getHours() * 60 + new Date().getMinutes()), false);
+    state.activeTimer = { running: false, paused: false, category: '', type: '', startedAt: '', pausedAt: '', accumulatedMs: 0, note: '', source: '' };
     saveState(); renderAll(); toast('Активный интервал отменён.');
+  }
+
+  function startStudioPreset(preset) {
+    const map = {
+      work: ['work', 'Работа', 'Рабочий интервал'],
+      sport: ['sport', 'Тренировка', 'Тренировка из быстрого запуска'],
+      'self-project': ['self', 'Проект', 'Саморазвитие: проект'],
+      book: ['self', 'Книга', 'Чтение / заметки'],
+      course: ['self', 'Курс', 'Курс / урок'],
+      break: ['break', 'Перерыв', 'Перерыв']
+    };
+    const item = map[preset];
+    if (!item) return;
+    $('#studioCategory') && ($('#studioCategory').value = item[0]);
+    renderStudioTypeOptions();
+    $('#studioType') && ($('#studioType').value = item[1]);
+    $('#studioNote') && ($('#studioNote').value = item[2]);
+    startActiveTimer(item[0], item[1], item[2]);
   }
 
   function renderMood() {
@@ -2335,6 +2466,19 @@
       }
       if (target.id === 'finishActiveTimerBtn') finishActiveTimer();
       if (target.id === 'cancelActiveTimerBtn') cancelActiveTimer();
+      if (target.id === 'studioStartBtn') {
+        const category = $('#studioCategory')?.value || 'work';
+        let type = $('#studioType')?.value || (category === 'work' ? 'Работа' : category === 'sport' ? 'Тренировка' : category === 'self' ? 'Саморазвитие' : 'Активность');
+        const custom = $('#studioCustomType')?.value.trim();
+        if ((category === 'custom' || type === 'Другое' || type === 'Свой вариант' || type === 'Свой спорт') && custom) type = custom;
+        startActiveTimer(category, type, $('#studioNote')?.value.trim() || '');
+      }
+      if (target.id === 'studioPauseBtn') pauseActiveTimer();
+      if (target.id === 'studioResumeBtn') resumeActiveTimer();
+      if (target.id === 'studioBreakBtn') startBreakTimer();
+      if (target.id === 'studioFinishBtn') finishActiveTimer();
+      if (target.id === 'studioCancelBtn') cancelActiveTimer();
+      if (target.dataset.studioPreset) startStudioPreset(target.dataset.studioPreset);
       if (target.dataset.todayQuick) {
         const kind = target.dataset.todayQuick;
         if (kind === 'work') fillWorkDay();
@@ -2448,6 +2592,9 @@
     $('#historyTodayBtn')?.addEventListener('click', () => setSelectedDate(todayKey()));
     $('#themeSelect').addEventListener('change', (e) => { state.theme = e.target.value; saveState(); renderAll(); });
     $('#settingsThemeSelect')?.addEventListener('change', (e) => { state.theme = e.target.value; saveState(); renderAll(); });
+    $('#studioCategory')?.addEventListener('change', renderStudioTypeOptions);
+    $('#studioType')?.addEventListener('change', renderStudioTypeOptions);
+    $('#studioNote')?.addEventListener('input', () => { if (state.activeTimer && (state.activeTimer.running || state.activeTimer.paused)) { state.activeTimer.note = $('#studioNote').value; saveState(); } });
     $('#dailyNote').addEventListener('input', (e) => { getMeta().note = e.target.value; saveState(); renderHero(); renderAchievements(); });
     $('#moodRow').addEventListener('click', (e) => {
       const btn = e.target.closest('[data-mood]');
@@ -2773,7 +2920,7 @@
     renderAll();
     checkReminders();
     setInterval(checkReminders, 60 * 1000);
-    setInterval(() => { if (activeTimerInfo()) renderTodayCenter(); }, 30 * 1000);
+    setInterval(() => { if (activeTimerInfo()) { renderTodayCenter(); renderActiveTimers(); } }, 1000);
   }
 
   let resizeRerenderTimer = null;

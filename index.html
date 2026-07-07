@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="LifeOS">
   <meta name="description" content="LifeOS — локальная PWA-панель контроля работы, времени, денег, проектов и привычек.">
-  <title>LifeOS v13 Today Screen</title>
+  <title>LifeOS v14 Active Timer</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
@@ -105,6 +105,7 @@
       <button class="tab" data-tab="goals">Цели</button>
       <button class="tab" data-tab="habits">Привычки</button>
       <button class="tab" data-tab="focus">Фокус</button>
+      <button class="tab" data-tab="timers">Таймеры</button>
       <button class="tab" data-tab="sport">Спорт</button>
       <button class="tab" data-tab="selfdev">Саморазвитие</button>
       <button class="tab" data-tab="money">Деньги</button>
@@ -381,6 +382,72 @@
             <div class="section-head"><div><p class="eyebrow">Фокус</p><h3>История и эффект</h3></div></div>
             <div id="focusStats" class="metric-grid"></div>
             <div id="focusHistory" class="feed compact-feed"></div>
+          </article>
+        </div>
+      </section>
+
+
+      <section id="timers" class="view">
+        <div class="grid two-columns">
+          <article class="panel card span-2 timer-studio-card">
+            <div class="section-head">
+              <div><p class="eyebrow">Active Timer · v14</p><h3>Живые таймеры</h3></div>
+              <button class="soft-btn" data-jump="dashboard" type="button">На главный экран</button>
+            </div>
+            <div class="timer-studio-layout">
+              <div class="studio-face">
+                <p id="studioStateLabel" class="eyebrow">Активного интервала нет</p>
+                <div id="studioElapsed" class="studio-elapsed">00:00:00</div>
+                <p id="studioSubline" class="muted">Выбери тип активности и запусти таймер.</p>
+              </div>
+              <div class="studio-controls">
+                <div class="form-row">
+                  <label class="field">Кольцо / тип
+                    <select class="select" id="studioCategory">
+                      <option value="work">Работа</option>
+                      <option value="sport">Спорт</option>
+                      <option value="self">Саморазвитие</option>
+                      <option value="break">Перерыв</option>
+                      <option value="custom">Свой вариант</option>
+                    </select>
+                  </label>
+                  <label class="field">Активность
+                    <select class="select" id="studioType"></select>
+                  </label>
+                </div>
+                <label class="field hidden" id="studioCustomWrap">Свой вариант
+                  <input class="input" id="studioCustomType" maxlength="60" placeholder="Например: сербский, документы, звонки">
+                </label>
+                <label class="field">Заметка к сессии
+                  <textarea id="studioNote" rows="3" maxlength="360" placeholder="Что именно делаешь сейчас"></textarea>
+                </label>
+                <div class="button-row stretch studio-main-actions">
+                  <button class="primary-btn" id="studioStartBtn" type="button">Старт</button>
+                  <button class="soft-btn" id="studioPauseBtn" type="button">Пауза</button>
+                  <button class="soft-btn" id="studioResumeBtn" type="button">Продолжить</button>
+                  <button class="soft-btn" id="studioBreakBtn" type="button">Перерыв</button>
+                  <button class="primary-btn" id="studioFinishBtn" type="button">Сохранить</button>
+                  <button class="soft-btn danger-soft" id="studioCancelBtn" type="button">Отменить</button>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel card span-2">
+            <div class="section-head"><div><p class="eyebrow">Быстрый запуск</p><h3>Пресеты таймера</h3></div></div>
+            <div class="quick-grid active-preset-grid">
+              <button class="quick-card" data-studio-preset="work" type="button"><span>💼</span><strong>Работа</strong><em>Запустить рабочий интервал</em></button>
+              <button class="quick-card" data-studio-preset="sport" type="button"><span>🏋️</span><strong>Спорт</strong><em>Тренировка / активность</em></button>
+              <button class="quick-card" data-studio-preset="self-project" type="button"><span>🛠️</span><strong>Проект</strong><em>Саморазвитие: проект</em></button>
+              <button class="quick-card" data-studio-preset="book" type="button"><span>📖</span><strong>Книга</strong><em>Чтение и заметки</em></button>
+              <button class="quick-card" data-studio-preset="course" type="button"><span>🎓</span><strong>Курс</strong><em>Урок / лекция</em></button>
+              <button class="quick-card" data-studio-preset="break" type="button"><span>☕</span><strong>Перерыв</strong><em>Отдых без зачёта колец</em></button>
+            </div>
+          </article>
+
+          <article class="panel card span-2">
+            <div class="section-head"><div><p class="eyebrow">История v14</p><h3>Последние живые сессии</h3></div></div>
+            <div id="activeTimerHistory" class="feed"></div>
           </article>
         </div>
       </section>
