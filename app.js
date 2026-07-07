@@ -1,8 +1,10 @@
 (() => {
   'use strict';
 
-  const KEY = 'lifeos.v11.v8base.complete';
-  const LEGACY_KEYS = ['lifeos.v10.stable','lifeos.v9.complete','lifeos.v8.rings','lifeos.v7.design', 'lifeos.v5.configurable', 'lifeos.v4.final', 'lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
+  const APP_VERSION = '12.0.0-stability';
+  const DATA_VERSION = 12;
+  const KEY = 'lifeos.v12.stability';
+  const LEGACY_KEYS = ['lifeos.v11.v8base.complete','lifeos.v10.stable','lifeos.v9.complete','lifeos.v8.rings','lifeos.v7.design', 'lifeos.v5.configurable', 'lifeos.v4.final', 'lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
   const DEFAULT_START = '2026-07-03';
   const DEFAULT_END = '2026-08-31';
   const DAY_LABELS = [
@@ -253,7 +255,10 @@
   function defaultState() {
     const workConfig = cloneWorkConfig(DEFAULT_WORK_CONFIG);
     return {
-      version: 11,
+      version: DATA_VERSION,
+      appVersion: APP_VERSION,
+      dataVersion: DATA_VERSION,
+      health: { lastSaveAt: '', lastAutoBackupAt: '', lastDiagnosticsAt: '', lastError: '' },
       onboardingDone: false,
       workConfig,
       theme: 'system',
@@ -296,7 +301,10 @@
     return {
       ...base,
       ...parsed,
-      version: 11,
+      version: DATA_VERSION,
+      appVersion: APP_VERSION,
+      dataVersion: DATA_VERSION,
+      health: { ...base.health, ...(parsed.health || {}) },
       ui: { ...base.ui, ...(parsed.ui || {}) },
       onboardingDone: Boolean(parsed.onboardingDone),
       workConfig,
@@ -342,9 +350,191 @@
 
   function saveState() {
     state.updatedAt = new Date().toISOString();
+    state.version = DATA_VERSION;
+    state.dataVersion = DATA_VERSION;
+    state.appVersion = APP_VERSION;
+    state.health = state.health || {};
+    state.health.lastSaveAt = new Date().toISOString();
     const payload = JSON.stringify(state);
     storageSet(payload);
     idbSet(payload).catch(() => { /* IndexedDB is an optional persistent backup. */ });
+    safeAutoBackup(payload);
+  }
+
+
+  function safeAutoBackup(payload) {
+    try {
+      const now = Date.now();
+      const last = Number(localStorageSafeGet('lifeos.autoBackupAt') || 0);
+      const sixHours = 6 * 60 * 60 * 1000;
+      if (now - last < sixHours) return;
+      localStorageSafeSet('lifeos.autoBackupAt', String(now));
+      localStorageSafeSet('lifeos.autoBackupSize', String(payload.length));
+      idbSet(payload, `${KEY}.autoBackup`).catch(() => {});
+      state.health = state.health || {};
+      state.health.lastAutoBackupAt = new Date(now).toISOString();
+    } catch (error) {
+      console.warn('Auto backup skipped', error);
+    }
+  }
+
+  function bytesLabel(bytes) {
+    const n = Number(bytes || 0);
+    if (n < 1024) return `${n} Б`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} КБ`;
+    return `${(n / 1024 / 1024).toFixed(2)} МБ`;
+  }
+
+  function setHealthError(error) {
+    try {
+      state.health = state.health || {};
+      state.health.lastError = `${new Date().toISOString()} — ${error?.message || error || 'unknown error'}`;
+      const snapshot = JSON.stringify(state);
+      storageSet(snapshot);
+      idbSet(snapshot).catch(() => {});
+    } catch { /* avoid recursive failure */ }
+  }
+
+  async function collectDiagnostics() {
+    const diag = {
+      appVersion: APP_VERSION,
+      dataVersion: DATA_VERSION,
+      key: KEY,
+      storageDriver,
+      localStorage: canUseWebStorage('localStorage'),
+      sessionStorage: canUseWebStorage('sessionStorage'),
+      cookies: canUseCookie(),
+      indexedDB: false,
+      serviceWorker: 'serviceWorker' in navigator,
+      serviceWorkerRegistrations: 0,
+      caches: [],
+      displayMode: (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true ? 'standalone' : 'browser',
+      userAgent: navigator.userAgent,
+      stateBytes: 0,
+      entries: state?.entries?.length || 0,
+      goals: state?.goals?.length || 0,
+      projects: state?.projects?.length || 0,
+      updatedAt: state?.updatedAt || '',
+      lastSaveAt: state?.health?.lastSaveAt || '',
+      lastAutoBackupAt: state?.health?.lastAutoBackupAt || '',
+      lastError: state?.health?.lastError || ''
+    };
+    try {
+      await idbSet(JSON.stringify(state), `${KEY}.diagnosticProbe`);
+      diag.indexedDB = Boolean(await idbGet(`${KEY}.diagnosticProbe`));
+    } catch { diag.indexedDB = false; }
+    try { diag.stateBytes = JSON.stringify(state || {}).length; } catch { diag.stateBytes = 0; }
+    try { if ('caches' in window) diag.caches = await caches.keys(); } catch { diag.caches = ['ошибка чтения']; }
+    try { if ('serviceWorker' in navigator) diag.serviceWorkerRegistrations = (await navigator.serviceWorker.getRegistrations()).length; } catch { diag.serviceWorkerRegistrations = -1; }
+    state.health = state.health || {};
+    state.health.lastDiagnosticsAt = new Date().toISOString();
+    return diag;
+  }
+
+  function diagnosticRows(diag) {
+    const ok = (value, good = true) => value === good ? 'ok' : 'warn';
+    return [
+      ['Версия приложения', diag.appVersion, 'ok'],
+      ['Версия данных', diag.dataVersion, 'ok'],
+      ['Основное хранилище', diag.storageDriver, diag.storageDriver === 'memory' ? 'bad' : 'ok'],
+      ['localStorage', diag.localStorage ? 'доступен' : 'недоступен', ok(diag.localStorage)],
+      ['sessionStorage', diag.sessionStorage ? 'доступен' : 'недоступен', ok(diag.sessionStorage)],
+      ['IndexedDB backup', diag.indexedDB ? 'работает' : 'недоступен', ok(diag.indexedDB)],
+      ['Service Worker', diag.serviceWorker ? `${diag.serviceWorkerRegistrations} рег.` : 'нет поддержки', diag.serviceWorker ? 'ok' : 'warn'],
+      ['Cache Storage', diag.caches.length ? diag.caches.join(', ') : 'пусто', 'ok'],
+      ['Режим запуска', diag.displayMode, 'ok'],
+      ['Размер данных', bytesLabel(diag.stateBytes), 'ok'],
+      ['Записей', String(diag.entries), 'ok'],
+      ['Последнее сохранение', diag.lastSaveAt ? formatDateTime(diag.lastSaveAt) : 'нет', diag.lastSaveAt ? 'ok' : 'warn'],
+      ['Автобэкап', diag.lastAutoBackupAt ? formatDateTime(diag.lastAutoBackupAt) : 'ожидает', 'ok'],
+      ['Последняя ошибка', diag.lastError || 'нет', diag.lastError ? 'warn' : 'ok']
+    ];
+  }
+
+  function formatDateTime(iso) {
+    try { return new Date(iso).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }); }
+    catch { return String(iso || ''); }
+  }
+
+  async function renderDiagnostics() {
+    const box = $('#diagnosticsBox');
+    const summary = $('#diagnosticsSummary');
+    if (!box && !summary) return;
+    const diag = await collectDiagnostics();
+    const rows = diagnosticRows(diag);
+    const badCount = rows.filter((row) => row[2] === 'bad').length;
+    const warnCount = rows.filter((row) => row[2] === 'warn').length;
+    if (summary) summary.innerHTML = `Диагностика: ${badCount ? 'есть критические проблемы' : warnCount ? 'есть предупреждения' : 'всё стабильно'} · данные: ${bytesLabel(diag.stateBytes)} · режим: ${escapeHtml(diag.displayMode)}`;
+    if (box) box.innerHTML = rows.map(([label, value, status]) => `
+      <div class="diag-row ${status}">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value)}</strong>
+      </div>
+    `).join('');
+    saveState();
+  }
+
+  async function repairPwaWithoutDeletingData() {
+    const snapshot = JSON.stringify(state, null, 2);
+    await idbSet(snapshot, `${KEY}.repairBackup`).catch(() => {});
+    storageSet(JSON.stringify(state), KEY);
+    if ('caches' in window) {
+      const names = await caches.keys();
+      await Promise.allSettled(names.map((name) => caches.delete(name)));
+    }
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.allSettled(regs.map((reg) => reg.unregister()));
+    }
+    toast('PWA-кэш и service worker удалены. Данные сохранены. Обнови страницу.');
+    renderDiagnostics();
+  }
+
+  function resetInterfaceKeepData() {
+    state.theme = 'system';
+    state.ui = { glassOpacity: 68, glassBlur: 20, animationLevel: 'normal', selfDevTargetMinutes: state.ui?.selfDevTargetMinutes || 60 };
+    state.homeWidgets = { planner: true, weeklyRings: true, eveningReport: true, timeline: true, quickTemplates: true, insights: true, mood: true };
+    state.ringSlots = ['work', 'sport', 'self'];
+    calendarFilter = 'all';
+    saveState();
+    renderAll();
+    toast('Интерфейс сброшен, данные сохранены.');
+  }
+
+  async function exportDiagnosticFile() {
+    const diag = await collectDiagnostics();
+    const payload = {
+      diagnostics: diag,
+      statePreview: {
+        version: state.version,
+        dataVersion: state.dataVersion,
+        selectedDate: state.selectedDate,
+        workConfig: state.workConfig,
+        entriesCount: state.entries?.length || 0,
+        goalsCount: state.goals?.length || 0,
+        projectsCount: state.projects?.length || 0,
+        updatedAt: state.updatedAt
+      }
+    };
+    downloadFile(`lifeos-diagnostics-${todayKey()}.json`, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
+    toast('Диагностический файл скачан.');
+  }
+
+  function showFatalError(error) {
+    const message = error?.message || String(error || 'Неизвестная ошибка');
+    console.error('LifeOS fatal error', error);
+    setHealthError(error);
+    const panel = $('#fatalErrorPanel');
+    const text = $('#fatalErrorText');
+    if (panel && text) {
+      text.textContent = message;
+      panel.hidden = false;
+    } else {
+      const fallback = document.createElement('div');
+      fallback.style.cssText = 'position:fixed;inset:20px;z-index:99999;padding:18px;border-radius:24px;background:#111827;color:#fff;font:16px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;overflow:auto';
+      fallback.innerHTML = `<h2>LifeOS восстановление</h2><p>${escapeHtml(message)}</p><button onclick="location.reload()" style="font:inherit;padding:12px 16px;border-radius:14px">Обновить</button>`;
+      document.body.appendChild(fallback);
+    }
   }
 
   function toDate(key) {
@@ -756,6 +946,7 @@
   function renderAll() {
     applyTheme();
     updateStorageBanner();
+    renderDiagnostics().catch(() => {});
     renderOnboarding();
     renderHero();
     renderRings();
@@ -2327,6 +2518,11 @@
     });
 
     $('#enableNotificationsBtn').addEventListener('click', requestNotificationPermission);
+    $('#runDiagnosticsBtn')?.addEventListener('click', () => renderDiagnostics().then(() => toast('Диагностика обновлена.')));
+    $('#repairPwaBtn')?.addEventListener('click', () => repairPwaWithoutDeletingData().catch(showFatalError));
+    $('#resetUiKeepDataBtn')?.addEventListener('click', resetInterfaceKeepData);
+    $('#downloadDiagnosticsBtn')?.addEventListener('click', () => exportDiagnosticFile().catch(showFatalError));
+    $('#safetyBackupBtn')?.addEventListener('click', exportJson);
     $('#resetDataBtn').addEventListener('click', () => {
       if (!confirm('Точно сбросить все данные LifeOS? Перед этим лучше сделать экспорт JSON.')) return;
       state = defaultState();
@@ -2467,5 +2663,7 @@
     }, 120);
   });
 
-  document.addEventListener('DOMContentLoaded', bootstrap);
+  window.addEventListener('error', (event) => showFatalError(event.error || event.message));
+  window.addEventListener('unhandledrejection', (event) => showFatalError(event.reason || 'Unhandled promise rejection'));
+  document.addEventListener('DOMContentLoaded', () => bootstrap().catch(showFatalError));
 })();

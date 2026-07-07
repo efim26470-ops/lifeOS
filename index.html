@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="LifeOS">
   <meta name="description" content="LifeOS — локальная PWA-панель контроля работы, времени, денег, проектов и привычек.">
-  <title>LifeOS</title>
+  <title>LifeOS v12 Stability</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
@@ -639,17 +639,45 @@
             <div id="customTemplateList" class="chip-list"></div>
           </article>
 
+          <article class="panel card span-2 service-center">
+            <div class="section-head">
+              <div><p class="eyebrow">v12 Stability</p><h3>PWA-центр обслуживания</h3></div>
+              <button class="soft-btn" id="runDiagnosticsBtn" type="button">Диагностика</button>
+            </div>
+            <p class="muted" id="diagnosticsSummary">Диагностика ещё не запускалась.</p>
+            <div id="diagnosticsBox" class="diagnostics-box"></div>
+            <div class="button-row stretch service-actions">
+              <button class="primary-btn" id="repairPwaBtn" type="button">Починить PWA без удаления данных</button>
+              <button class="soft-btn" id="resetUiKeepDataBtn" type="button">Сбросить интерфейс</button>
+              <button class="soft-btn" id="safetyBackupBtn" type="button">Скачать JSON-бэкап</button>
+              <button class="soft-btn" id="downloadDiagnosticsBtn" type="button">Скачать диагностику</button>
+            </div>
+            <p class="muted small">Этот блок удаляет только кэш и старый service worker. Записи, график, кольца, спорт, саморазвитие и проекты сохраняются.</p>
+          </article>
+
           <article class="panel card danger-zone">
-            <div class="section-head"><div><p class="eyebrow">Обслуживание</p><h3>Сброс и сервис</h3></div></div>
-            <button class="soft-btn full" id="clearCacheBtn">Очистить кэш PWA</button>
+            <div class="section-head"><div><p class="eyebrow">Опасная зона</p><h3>Сброс и сервис</h3></div></div>
+            <button class="soft-btn full" id="clearCacheBtn">Очистить только кэш PWA</button>
             <button class="danger-btn full" id="resetDataBtn">Сбросить все данные</button>
-            <p class="muted small">Перед сбросом лучше сделать экспорт JSON.</p>
+            <p class="muted small">Перед полным сбросом обязательно сделай экспорт JSON.</p>
           </article>
         </div>
       </section>
     </main>
   </div>
 
+  <div id="fatalErrorPanel" class="fatal-error" hidden>
+    <div class="fatal-card panel">
+      <p class="eyebrow">Восстановление LifeOS</p>
+      <h2>Приложение поймало ошибку</h2>
+      <p class="muted">Данные не удалены. Сначала попробуй обновить страницу или открыть настройки и починить PWA без удаления данных.</p>
+      <pre id="fatalErrorText"></pre>
+      <div class="button-row stretch">
+        <button class="primary-btn" type="button" onclick="location.reload()">Обновить страницу</button>
+        <button class="soft-btn" type="button" onclick="document.getElementById('fatalErrorPanel').hidden=true">Закрыть</button>
+      </div>
+    </div>
+  </div>
   <div id="toast" class="toast" hidden></div>
   <script src="./app.js"></script>
 </body>

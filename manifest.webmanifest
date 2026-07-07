@@ -1,7 +1,7 @@
 {
-  "name": "LifeOS v11 — Work, Sport & Growth Rings",
+  "name": "LifeOS v12 — Stability Center",
   "short_name": "LifeOS",
-  "description": "Стабильная PWA на базе v8: работа, спорт, саморазвитие, кольца, планировщик, история, темы iOS и Liquid Glass.",
+  "description": "PWA на базе рабочей v8/v11: работа, спорт, саморазвитие, кольца, диагностика, бэкапы, PWA-центр обслуживания и защита от ошибок.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
