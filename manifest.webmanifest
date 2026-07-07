@@ -1,7 +1,7 @@
 {
-  "name": "LifeOS v12 — Stability Center",
+  "name": "LifeOS v13 — Today Screen",
   "short_name": "LifeOS",
-  "description": "PWA на базе рабочей v8/v11: работа, спорт, саморазвитие, кольца, диагностика, бэкапы, PWA-центр обслуживания и защита от ошибок.",
+  "description": "PWA на базе стабильной v12: Today Screen, кольца, быстрые действия, живой таймер, работа, спорт, саморазвитие, диагностика и PWA-центр обслуживания.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

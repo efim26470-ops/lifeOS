@@ -1,10 +1,10 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '12.0.0-stability';
-  const DATA_VERSION = 12;
-  const KEY = 'lifeos.v12.stability';
-  const LEGACY_KEYS = ['lifeos.v11.v8base.complete','lifeos.v10.stable','lifeos.v9.complete','lifeos.v8.rings','lifeos.v7.design', 'lifeos.v5.configurable', 'lifeos.v4.final', 'lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
+  const APP_VERSION = '13.0.0-today-screen';
+  const DATA_VERSION = 13;
+  const KEY = 'lifeos.v13.today';
+  const LEGACY_KEYS = ['lifeos.v12.stability','lifeos.v11.v8base.complete','lifeos.v10.stable','lifeos.v9.complete','lifeos.v8.rings','lifeos.v7.design', 'lifeos.v5.configurable', 'lifeos.v4.final', 'lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
   const DEFAULT_START = '2026-07-03';
   const DEFAULT_END = '2026-08-31';
   const DAY_LABELS = [
@@ -272,7 +272,7 @@
         { id: 'cat-ableton', name: 'Ableton', icon: '🎛️', kind: 'self', targetMinutes: 45, inRings: true }
       ],
       ringSlots: ['work', 'sport', 'self'],
-      homeWidgets: { planner: true, weeklyRings: true, eveningReport: true, timeline: true, quickTemplates: true, insights: true, mood: true },
+      homeWidgets: { todayCenter: true, planner: true, weeklyRings: true, eveningReport: true, timeline: true, quickTemplates: true, insights: true, mood: true },
       customTemplates: [],
       eveningReports: {},
       sportTypes: [],
@@ -287,6 +287,7 @@
       focusSessions: [],
       finance: { hourRate: 350, fullDayBonus: 0, missPenalty: 0, moneyTarget: 0 },
       notifications: { enabled: false, lastFired: {} },
+      activeTimer: { running: false, category: '', type: '', startedAt: '', note: '' },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -325,7 +326,8 @@
       projects: Array.isArray(parsed.projects) ? parsed.projects : base.projects,
       focusSessions: Array.isArray(parsed.focusSessions) ? parsed.focusSessions : [],
       finance: { ...base.finance, ...(parsed.finance || {}) },
-      notifications: { ...base.notifications, ...(parsed.notifications || {}) }
+      notifications: { ...base.notifications, ...(parsed.notifications || {}) },
+      activeTimer: { ...base.activeTimer, ...(parsed.activeTimer || {}) }
     };
   }
 
@@ -493,7 +495,7 @@
   function resetInterfaceKeepData() {
     state.theme = 'system';
     state.ui = { glassOpacity: 68, glassBlur: 20, animationLevel: 'normal', selfDevTargetMinutes: state.ui?.selfDevTargetMinutes || 60 };
-    state.homeWidgets = { planner: true, weeklyRings: true, eveningReport: true, timeline: true, quickTemplates: true, insights: true, mood: true };
+    state.homeWidgets = { todayCenter: true, planner: true, weeklyRings: true, eveningReport: true, timeline: true, quickTemplates: true, insights: true, mood: true };
     state.ringSlots = ['work', 'sport', 'self'];
     calendarFilter = 'all';
     saveState();
@@ -1031,6 +1033,7 @@
     renderQuickTemplates();
     renderTimelineVisual('#dashboardTimeline', date);
     renderEntries('#dashboardEntries', dayEntries(date).slice(0, 6), true);
+    renderTodayCenter();
   }
 
   function statusColor(status) {
@@ -1049,6 +1052,108 @@
     if (st.status === 'partial') return `Не хватает ${hm(lost)} до плана. ${flags.join(' · ')}`;
     if (st.status === 'future') return `План на день: ${st.plan.label}. Пока это будущий рабочий день.`;
     return `Записей работы нет. План: ${st.plan.label}.`;
+  }
+
+
+  function activeTimerInfo() {
+    const active = state.activeTimer || {};
+    if (!active.running || !active.startedAt) return null;
+    const started = new Date(active.startedAt);
+    const now = new Date();
+    const elapsed = Math.max(0, Math.round((now - started) / 60000));
+    const startMin = started.getHours() * 60 + started.getMinutes();
+    return {
+      ...active,
+      started,
+      date: dateKey(started),
+      start: minutesToTime(startMin),
+      elapsed,
+      label: active.category === 'work' ? 'Работа' : active.category === 'sport' ? 'Спорт' : active.category === 'self' ? 'Саморазвитие' : (active.type || 'Активность')
+    };
+  }
+
+  function nextActionForToday(date = state.selectedDate) {
+    const st = dayStatus(date);
+    const active = activeTimerInfo();
+    if (active) return `Идёт ${active.label.toLowerCase()}: ${hm(active.elapsed)}. Заверши интервал, когда закончишь.`;
+    if (st.plan.minutes && st.work < st.plan.minutes) return `Добей работу: осталось ${hm(st.plan.minutes - st.work)} до плана дня.`;
+    const sportTarget = Math.max(0, Number(activeConfig().targetWorkoutsPerWeek || 0));
+    const sportWeek = weekEntriesFrom(sportEntries(), date).length;
+    if (sportTarget && sportWeek < sportTarget) return `Спорт: осталось ${sportTarget - sportWeek} трен. до недельной цели.`;
+    const selfLeft = Math.max(0, selfDevTargetMinutes() - minutesForEntries(entriesForCategoryId('self', date)));
+    if (selfLeft > 0) return `Саморазвитие: можно закрыть ещё ${hm(selfLeft)} — книга, курс, проект или свой вариант.`;
+    if (!getMeta(date).note) return 'День почти собран. Добавь короткую заметку как в Apple Journal.';
+    return 'Сегодня закрыт ровно. Можно посмотреть историю дня или сделать бэкап.';
+  }
+
+  function renderTodayCenter() {
+    const box = $('#todayCenter');
+    if (!box) return;
+    const date = state.selectedDate;
+    const data = ringStats(date);
+    const pcts = data.map((item) => Math.min(100, Math.max(0, item.pct || 0)));
+    const avg = Math.round(pcts.reduce((a, b) => a + b, 0) / Math.max(1, pcts.length));
+    const active = activeTimerInfo();
+    $('#todayCenterTitle').textContent = formatDate(date, { weekday: 'long', day: 'numeric', month: 'long' });
+    $('#todayNextAction').textContent = nextActionForToday(date);
+    const mini = $('#todayMiniRings');
+    mini.style.setProperty('--work-pct', `${pcts[0] || 0}%`);
+    mini.style.setProperty('--sport-pct', `${pcts[1] || 0}%`);
+    mini.style.setProperty('--self-pct', `${pcts[2] || 0}%`);
+    $('#todayMiniCenter').textContent = `${avg}%`;
+    $('#todayRingRows').innerHTML = data.map((item, index) => `
+      <div class="today-ring-row ring-${index}">
+        <span class="ring-dot"></span>
+        <div><strong>${escapeHtml(item.icon)} ${escapeHtml(item.label)}</strong><p>${escapeHtml(item.value)} · ${escapeHtml(item.sub)}</p></div>
+      </div>
+    `).join('');
+    $('#todayActiveState').innerHTML = active ? `
+      <div class="active-session running">
+        <div><strong>Сейчас: ${escapeHtml(active.label)}</strong><p>Старт ${escapeHtml(active.start)} · прошло ${escapeHtml(hm(active.elapsed))}</p></div>
+        <div class="button-row mini-actions">
+          <button class="primary-btn" id="finishActiveTimerBtn" type="button">Завершить</button>
+          <button class="soft-btn" id="cancelActiveTimerBtn" type="button">Отменить</button>
+        </div>
+      </div>
+    ` : `
+      <div class="active-session">
+        <div><strong>Активного интервала нет</strong><p>Запусти живой таймер: работа, спорт или саморазвитие. При завершении запись попадёт в журнал.</p></div>
+      </div>
+    `;
+  }
+
+  function startActiveTimer(category, type) {
+    const active = activeTimerInfo();
+    if (active) return toast('Сначала заверши текущий активный интервал.');
+    state.activeTimer = { running: true, category, type, startedAt: new Date().toISOString(), note: 'Живой таймер Today Screen' };
+    saveState(); renderAll(); toast(`${type} запущено.`);
+  }
+
+  function finishActiveTimer() {
+    const active = activeTimerInfo();
+    if (!active) return toast('Активного интервала нет.');
+    const now = new Date();
+    const end = minutesToTime(now.getHours() * 60 + now.getMinutes());
+    const start = active.start;
+    if (timeToMinutes(end) <= timeToMinutes(start)) {
+      state.activeTimer = { running: false, category: '', type: '', startedAt: '', note: '' };
+      saveState(); renderAll();
+      return toast('Интервал слишком короткий или перешёл через полночь. Запись не добавлена.');
+    }
+    if (active.category === 'sport') {
+      addSportEntry({ date: active.date, start, end, activity: active.type || 'Тренировка', intensity: 'Средняя', calories: 0, note: active.note || 'Живой таймер спорта' });
+    } else if (active.category === 'self') {
+      addSelfEntry({ date: active.date, start, end, activity: active.type || 'Саморазвитие', note: active.note || 'Живой таймер саморазвития' });
+    } else {
+      addEntry({ date: active.date, start, end, type: active.type || 'Работа', note: active.note || 'Живой таймер работы' });
+    }
+    state.activeTimer = { running: false, category: '', type: '', startedAt: '', note: '' };
+    saveState(); renderAll(); toast('Интервал завершён и сохранён.');
+  }
+
+  function cancelActiveTimer() {
+    state.activeTimer = { running: false, category: '', type: '', startedAt: '', note: '' };
+    saveState(); renderAll(); toast('Активный интервал отменён.');
   }
 
   function renderMood() {
@@ -1837,7 +1942,7 @@
     const box = $('#widgetSettings');
     if (!box) return;
     const widgets = [
-      ['planner', 'Умный планировщик'], ['weeklyRings', 'Кольца недели'], ['eveningReport', 'Вечерний отчёт'],
+      ['todayCenter', 'Центр сегодня'], ['planner', 'Умный планировщик'], ['weeklyRings', 'Кольца недели'], ['eveningReport', 'Вечерний отчёт'],
       ['quickTemplates', 'Быстрые шаблоны'], ['timeline', 'Таймлайн'], ['insights', 'Антихаос'], ['mood', 'Настроение и заметка']
     ];
     box.innerHTML = widgets.map(([key, label]) => `<label class="check-row"><input type="checkbox" data-widget-toggle="${key}" ${widgetEnabled(key) ? 'checked' : ''}> ${escapeHtml(label)}</label>`).join('');
@@ -2222,6 +2327,21 @@
 
       if (target.dataset.jump) {
         $(`.tab[data-tab="${target.dataset.jump}"]`)?.click();
+      }
+      if (target.dataset.activeStart) {
+        const category = target.dataset.activeStart;
+        const type = category === 'work' ? 'Работа' : category === 'sport' ? 'Тренировка' : 'Саморазвитие';
+        startActiveTimer(category, type);
+      }
+      if (target.id === 'finishActiveTimerBtn') finishActiveTimer();
+      if (target.id === 'cancelActiveTimerBtn') cancelActiveTimer();
+      if (target.dataset.todayQuick) {
+        const kind = target.dataset.todayQuick;
+        if (kind === 'work') fillWorkDay();
+        if (kind === 'sport') addSportEntry({ date: state.selectedDate, start: '18:00', end: '19:00', activity: 'Тренировка', intensity: 'Средняя', calories: 0, note: 'Быстрая отметка с Today Screen' });
+        if (kind === 'book') addSelfEntry({ date: state.selectedDate, start: '20:00', end: '20:30', activity: 'Книга', note: 'Чтение / саморазвитие с Today Screen' });
+        if (kind === 'course') addSelfEntry({ date: state.selectedDate, start: '20:00', end: '20:45', activity: 'Курс', note: 'Курс / урок с Today Screen' });
+        if (kind === 'custom') $(`.tab[data-tab="day"]`)?.click();
       }
       if (target.dataset.sportTemplate !== undefined) {
         const t = SPORT_QUICK_TEMPLATES[Number(target.dataset.sportTemplate)];
@@ -2653,6 +2773,7 @@
     renderAll();
     checkReminders();
     setInterval(checkReminders, 60 * 1000);
+    setInterval(() => { if (activeTimerInfo()) renderTodayCenter(); }, 30 * 1000);
   }
 
   let resizeRerenderTimer = null;
