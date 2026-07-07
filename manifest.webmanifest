@@ -1,0 +1,91 @@
+{
+  "name": "LifeOS v11 — Work, Sport & Growth Rings",
+  "short_name": "LifeOS",
+  "description": "Стабильная PWA на базе v8: работа, спорт, саморазвитие, кольца, планировщик, история, темы iOS и Liquid Glass.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "browser"
+  ],
+  "background_color": "#020617",
+  "theme_color": "#0a84ff",
+  "orientation": "portrait",
+  "lang": "ru",
+  "categories": [
+    "productivity",
+    "health",
+    "fitness",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "./icons/favicon-16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "./icons/favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icons/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "День",
+      "short_name": "День",
+      "url": "./index.html#day",
+      "description": "Быстро добавить запись времени"
+    },
+    {
+      "name": "Фокус",
+      "short_name": "Фокус",
+      "url": "./index.html#focus",
+      "description": "Открыть Pomodoro"
+    },
+    {
+      "name": "Спорт",
+      "short_name": "Спорт",
+      "url": "./index.html#sport",
+      "description": "Добавить тренировку или прогулку"
+    },
+    {
+      "name": "Саморазвитие",
+      "short_name": "Рост",
+      "url": "./index.html#selfdev",
+      "description": "Добавить проект, книгу, курс или свой вариант"
+    },
+    {
+      "name": "Отчёт",
+      "short_name": "Отчёт",
+      "url": "./index.html#reports",
+      "description": "Сформировать отчёт"
+    }
+  ]
+}
