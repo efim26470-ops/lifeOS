@@ -1,10 +1,10 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '16.0.0-profiles-reports';
+  const APP_VERSION = '16.1-achievements';
   const DATA_VERSION = 16;
-  const KEY = 'lifeos.v16.profiles.reports.hotfix1';
-  const LEGACY_KEYS = ['lifeos.v15.modules','lifeos.v14.active','lifeos.v13.today','lifeos.v12.stability','lifeos.v11.v8base.complete','lifeos.v10.stable','lifeos.v9.complete','lifeos.v8.rings','lifeos.v7.design', 'lifeos.v5.configurable', 'lifeos.v4.final', 'lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
+  const KEY = 'lifeos.v16.1.achievements';
+  const LEGACY_KEYS = ['lifeos.v16.profiles.reports.hotfix1','lifeos.v16.profiles.reports','lifeos.v15.modules','lifeos.v14.active','lifeos.v13.today','lifeos.v12.stability','lifeos.v11.v8base.complete','lifeos.v10.stable','lifeos.v9.complete','lifeos.v8.rings','lifeos.v7.design', 'lifeos.v5.configurable', 'lifeos.v4.final', 'lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
   const DEFAULT_START = '2026-07-03';
   const DEFAULT_END = '2026-08-31';
   const DAY_LABELS = [
@@ -2396,6 +2396,24 @@
     `).join('') : '<div class="empty-state">Проекты пока не добавлены.</div>';
   }
 
+  const ACHIEVEMENT_TIERS = [
+    { id: 'bronze', name: 'Бронза', icon: '🥉', className: 'tier-bronze' },
+    { id: 'silver', name: 'Серебро', icon: '🥈', className: 'tier-silver' },
+    { id: 'gold', name: 'Золото', icon: '🥇', className: 'tier-gold' },
+    { id: 'platinum', name: 'Платина', icon: '💎', className: 'tier-platinum' },
+    { id: 'ultra', name: 'Ультра', icon: '⚡', className: 'tier-ultra' },
+    { id: 'legend', name: 'Легенда', icon: '👑', className: 'tier-legend' }
+  ];
+
+  const PLAYER_RANKS = [
+    [1, 'Новичок LifeOS', 'Запускаешь систему.'],
+    [5, 'Стабильный', 'Уже есть ритм.'],
+    [10, 'Собранный', 'День под контролем.'],
+    [20, 'Машина', 'Работаешь системно.'],
+    [35, 'Архитектор дня', 'Строишь собственную ОС.'],
+    [50, 'Легенда периода', 'LifeOS стала привычкой.']
+  ];
+
   function nextMilestones(value, step, count = 4, start = step) {
     const done = Math.floor(value / step) * step;
     const rows = [];
@@ -2403,66 +2421,246 @@
     return Array.from(new Set(rows)).filter((n) => n > 0).slice(0, count);
   }
 
+  function buildTargets(seedTargets, current = 0, multiplier = 2) {
+    const targets = [...new Set(seedTargets.map((n) => Math.max(1, Math.round(Number(n || 0)))))]
+      .filter(Boolean)
+      .sort((a, b) => a - b);
+    const factor = Math.max(1.25, Number(multiplier || 2));
+    while (targets.length < ACHIEVEMENT_TIERS.length + 2 || targets[targets.length - 1] <= current) {
+      const last = targets[targets.length - 1] || 1;
+      targets.push(Math.max(last + 1, Math.round(last * factor)));
+    }
+    return targets;
+  }
+
+  function tierAt(index) {
+    return ACHIEVEMENT_TIERS[Math.min(index, ACHIEVEMENT_TIERS.length - 1)];
+  }
+
+  function progressLabel(value, unit = '') {
+    if (unit === 'ч') return `${Math.floor(value)}ч`;
+    if (unit === 'м') return hm(value);
+    if (unit === '%') return `${Math.round(value)}%`;
+    if (unit === '₽') return rub(value);
+    return `${Math.floor(value)}${unit ? ' ' + unit : ''}`;
+  }
+
+  function achievementProgress(current, targets) {
+    let unlocked = 0;
+    for (const target of targets) {
+      if (current >= target) unlocked++;
+      else break;
+    }
+    const prevTarget = unlocked > 0 ? targets[unlocked - 1] : 0;
+    const nextTarget = targets[unlocked] || Math.max(prevTarget + 1, Math.round(prevTarget * 2));
+    const tier = tierAt(Math.max(0, unlocked - 1));
+    const nextTier = tierAt(unlocked);
+    const into = Math.max(0, current - prevTarget);
+    const need = Math.max(1, nextTarget - prevTarget);
+    return {
+      unlocked,
+      level: unlocked,
+      tier,
+      nextTier,
+      prevTarget,
+      nextTarget,
+      pct: unlocked ? percent(into, need) : percent(current, nextTarget),
+      done: current >= targets[0]
+    };
+  }
+
+  function makeAchievement({ id, group, icon, title, desc, current, targets, unit = '', multiplier = 2 }) {
+    const fullTargets = buildTargets(targets, current, multiplier);
+    const progress = achievementProgress(current, fullTargets);
+    return {
+      id,
+      group,
+      icon,
+      title,
+      desc,
+      current,
+      unit,
+      targets: fullTargets,
+      ...progress
+    };
+  }
+
+  function weekKey(date) {
+    const d = toDate(date);
+    const day = d.getDay() || 7;
+    d.setDate(d.getDate() - day + 1);
+    return dateKey(d);
+  }
+
+  function goalWeeks(entries, targetCount) {
+    const target = Math.max(1, Number(targetCount || 1));
+    const weeks = new Map();
+    entries.forEach((entry) => {
+      const key = weekKey(entry.date);
+      weeks.set(key, (weeks.get(key) || 0) + 1);
+    });
+    return Array.from(weeks.values()).filter((count) => count >= target).length;
+  }
+
+  function perfectDaysCount() {
+    return allDates().filter((date) => {
+      const status = dayStatus(date);
+      const hasSport = entriesForCategoryId('sport', date).length > 0;
+      const hasSelf = entriesForCategoryId('self', date).length > 0;
+      return status.status === 'done' && hasSport && hasSelf;
+    }).length;
+  }
+
+  function completedHabitsCount() {
+    return Object.values(state.habitChecks || {}).reduce((sum, checks) => sum + Object.values(checks || {}).filter(Boolean).length, 0);
+  }
+
+  function playerRank(level) {
+    let rank = PLAYER_RANKS[0];
+    for (const item of PLAYER_RANKS) {
+      if (level >= item[0]) rank = item;
+    }
+    return { name: rank[1], desc: rank[2] };
+  }
+
   function achievementCatalog() {
     const stats = periodStats();
     const focus = state.focusSessions.reduce((sum, s) => sum + (s.minutes || 0), 0);
+    const focusHours = Math.floor(focus / 60);
+    const focusSessions = state.focusSessions.length;
     const entries = state.entries.length;
+    const sports = sportStats();
+    const sportMinutes = sports.total;
+    const sportHours = Math.floor(sportMinutes / 60);
+    const sportCount = sports.entries.length;
+    const targetPerWeek = Math.max(1, Number(activeConfig().targetWorkoutsPerWeek || 1));
+    const sportGoalWeeks = goalWeeks(sportEntries(), targetPerWeek);
+    const selfDev = selfDevStats();
+    const selfMinutes = selfDev.total;
+    const selfHours = Math.floor(selfMinutes / 60);
+    const selfSessions = selfDev.entries.length;
+    const notes = Object.values(state.dayMeta).filter((m) => m.note && m.note.trim()).length;
+    const habitChecks = completedHabitsCount();
     const booksDone = (state.books || []).filter((b) => b.status === 'Закончил' || (Number(b.totalPages || 0) > 0 && Number(b.currentPage || 0) >= Number(b.totalPages || 0))).length;
     const coursesDone = (state.courses || []).filter((c) => c.status === 'Закончил' || (Number(c.totalLessons || 0) > 0 && Number(c.doneLessons || 0) >= Number(c.totalLessons || 0))).length;
     const bookPages = (state.books || []).reduce((sum, b) => sum + Number(b.currentPage || 0), 0);
     const courseLessons = (state.courses || []).reduce((sum, c) => sum + Number(c.doneLessons || 0), 0);
     const projectsDone = state.projects.filter((p) => Number(p.progress || 0) >= 100 || p.status === 'Готово').length;
-    const sports = sportStats();
-    const sportMinutes = sports.total;
-    const selfDev = selfDevStats();
-    const selfMinutes = selfDev.total;
-    const notes = Object.values(state.dayMeta).filter((m) => m.note && m.note.trim()).length;
+    const projectProgressSum = state.projects.reduce((sum, p) => sum + Number(p.progress || 0), 0);
     const jsonBackups = Number(localStorageSafeGet('lifeos.lastBackupCount') || 0);
-    const targetPerWeek = Math.max(0, Number(activeConfig().targetWorkoutsPerWeek || 0));
-    const catalog = [
-      ['Первый след', entries >= 1, entries, 1, 'Добавить первую запись времени.'],
-      ['Полный рабочий день', stats.fullDays >= 1, stats.fullDays, 1, 'Закрыть один рабочий день на 100%.'],
-      ['Период под контролем', stats.pct >= 100, stats.work, stats.plan, 'Закрыть весь выбранный рабочий план.'],
-      ['Архивариус', jsonBackups >= 1, jsonBackups, 1, 'Сделать экспорт JSON.'],
-      ['Календарик стукача', state.theme === 'snitch', state.theme === 'snitch' ? 1 : 0, 1, 'Включить пасхальную тему.']
+    const customCategoriesCount = customCategories().length;
+    const templatesCount = (state.customTemplates || []).length;
+    const profilesCount = profileList().length;
+    const moneyEarned = (() => {
+      const f = state.finance || {};
+      return Math.round((stats.work / 60) * Number(f.hourRate || 0) + stats.fullDays * Number(f.fullDayBonus || 0));
+    })();
+
+    return [
+      makeAchievement({ id: 'first-entry', group: 'Старт', icon: '🌱', title: 'Первый след', desc: 'Добавить записи времени и начать вести LifeOS.', current: entries, targets: [1, 5, 10, 25, 50, 100], unit: 'зап.' }),
+      makeAchievement({ id: 'work-hours', group: 'Работа', icon: '💼', title: 'Рабочая машина', desc: 'Накопить зачтённые рабочие часы по графику.', current: Math.floor(stats.work / 60), targets: [1, 5, 10, 25, 50, 100, 250, 500], unit: 'ч' }),
+      makeAchievement({ id: 'full-days', group: 'Работа', icon: '✅', title: 'Полные рабочие дни', desc: 'Закрывать рабочие дни на 100%.', current: stats.fullDays, targets: [1, 3, 5, 10, 20, 30, 50, 100], unit: 'дн.' }),
+      makeAchievement({ id: 'work-streak', group: 'Работа', icon: '🔥', title: 'Серия без срыва', desc: 'Закрывать рабочие дни подряд.', current: currentStreak(), targets: [2, 3, 5, 7, 10, 14, 21, 30], unit: 'дн.' }),
+      makeAchievement({ id: 'period-progress', group: 'Работа', icon: '🎯', title: 'План периода', desc: 'Двигаться к полному закрытию выбранного рабочего периода.', current: stats.pct, targets: [10, 25, 50, 75, 100, 125], unit: '%' }),
+      makeAchievement({ id: 'perfect-days', group: 'Баланс', icon: '🌈', title: 'Идеальные дни', desc: 'В один день закрыть работу, спорт и саморазвитие.', current: perfectDaysCount(), targets: [1, 2, 3, 5, 10, 20, 50], unit: 'дн.' }),
+      makeAchievement({ id: 'sport-hours', group: 'Спорт', icon: '🏋️', title: 'Спортивные часы', desc: 'Накопить время тренировок, прогулок и активности.', current: sportHours, targets: [1, 3, 5, 10, 25, 50, 100, 250], unit: 'ч' }),
+      makeAchievement({ id: 'workouts', group: 'Спорт', icon: '💪', title: 'Тренировки', desc: 'Фиксировать спортивные активности.', current: sportCount, targets: [1, 3, 5, 10, 25, 50, 100, 250], unit: 'трен.' }),
+      makeAchievement({ id: 'weekly-sport', group: 'Спорт', icon: '📅', title: 'Недели по спортивной цели', desc: `Закрывать цель ${targetPerWeek} тренировок в неделю.`, current: sportGoalWeeks, targets: [1, 2, 4, 8, 12, 24, 52], unit: 'нед.' }),
+      makeAchievement({ id: 'self-hours', group: 'Саморазвитие', icon: '✦', title: 'Часы роста', desc: 'Накопить время проектов, книг, курсов и практики.', current: selfHours, targets: [1, 3, 5, 10, 25, 50, 100, 250], unit: 'ч' }),
+      makeAchievement({ id: 'self-sessions', group: 'Саморазвитие', icon: '🧠', title: 'Сессии роста', desc: 'Проводить отдельные сессии саморазвития.', current: selfSessions, targets: [1, 5, 10, 25, 50, 100, 250], unit: 'сесс.' }),
+      makeAchievement({ id: 'focus-hours', group: 'Фокус', icon: '⏱️', title: 'Глубокий фокус', desc: 'Накопить часы фокус-сессий.', current: focusHours, targets: [1, 2, 5, 10, 25, 50, 100], unit: 'ч' }),
+      makeAchievement({ id: 'focus-sessions', group: 'Фокус', icon: '🎧', title: 'Фокус-сессии', desc: 'Запускать и завершать фокус-сессии.', current: focusSessions, targets: [1, 5, 10, 25, 50, 100, 250], unit: 'сесс.' }),
+      makeAchievement({ id: 'notes', group: 'Дневник', icon: '📝', title: 'Дневник', desc: 'Оставлять заметки дня в стиле Apple Journal.', current: notes, targets: [1, 3, 7, 14, 30, 60, 120], unit: 'зам.' }),
+      makeAchievement({ id: 'habits', group: 'Дневник', icon: '☑️', title: 'Привычки', desc: 'Отмечать чек-лист привычек.', current: habitChecks, targets: [5, 15, 30, 75, 150, 300, 600], unit: 'отм.' }),
+      makeAchievement({ id: 'book-pages', group: 'Книги', icon: '📖', title: 'Страницы', desc: 'Читать книги и фиксировать прогресс.', current: bookPages, targets: [10, 50, 100, 250, 500, 1000, 2500, 5000], unit: 'стр.' }),
+      makeAchievement({ id: 'books-done', group: 'Книги', icon: '🏁', title: 'Завершённые книги', desc: 'Дочитывать книги до конца.', current: booksDone, targets: [1, 2, 3, 5, 10, 20, 50], unit: 'кн.' }),
+      makeAchievement({ id: 'course-lessons', group: 'Курсы', icon: '🎓', title: 'Уроки', desc: 'Проходить уроки в курсах.', current: courseLessons, targets: [1, 5, 10, 25, 50, 100, 250, 500], unit: 'ур.' }),
+      makeAchievement({ id: 'courses-done', group: 'Курсы', icon: '📜', title: 'Завершённые курсы', desc: 'Закрывать курсы полностью.', current: coursesDone, targets: [1, 2, 3, 5, 10, 20], unit: 'курс.' }),
+      makeAchievement({ id: 'projects', group: 'Проекты', icon: '🚀', title: 'Проекты', desc: 'Вести GitHub Pages и личные проекты.', current: state.projects.length, targets: [1, 3, 5, 10, 20, 50], unit: 'пр.' }),
+      makeAchievement({ id: 'releases', group: 'Проекты', icon: '✅', title: 'Релизы', desc: 'Доводить проекты до 100% или статуса «Готово».', current: projectsDone, targets: [1, 2, 3, 5, 10, 20], unit: 'рел.' }),
+      makeAchievement({ id: 'project-progress', group: 'Проекты', icon: '📈', title: 'Суммарный прогресс', desc: 'Прокачивать прогресс по всем проектам.', current: projectProgressSum, targets: [100, 250, 500, 1000, 2500], unit: '%' }),
+      makeAchievement({ id: 'custom-categories', group: 'Кастомизация', icon: '🧩', title: 'Своя система', desc: 'Создавать собственные категории и кольца.', current: customCategoriesCount, targets: [1, 2, 3, 5, 10, 20], unit: 'кат.' }),
+      makeAchievement({ id: 'templates', group: 'Кастомизация', icon: '⚡', title: 'Быстрые шаблоны', desc: 'Настроить быстрые действия под себя.', current: templatesCount, targets: [1, 3, 5, 10, 20], unit: 'шаб.' }),
+      makeAchievement({ id: 'profiles', group: 'Кастомизация', icon: '👤', title: 'Профили', desc: 'Использовать разные профили LifeOS.', current: profilesCount, targets: [2, 3, 5, 10], unit: 'проф.' }),
+      makeAchievement({ id: 'backup', group: 'Система', icon: '🛡️', title: 'Архивариус', desc: 'Делать JSON-бэкапы и защищать данные.', current: jsonBackups, targets: [1, 3, 5, 10, 25, 50], unit: 'бэк.' }),
+      makeAchievement({ id: 'money', group: 'Финансы', icon: '₽', title: 'Финансовый прогресс', desc: 'Зарабатывать по рабочему плану при заданной ставке.', current: moneyEarned, targets: [1000, 5000, 10000, 25000, 50000, 100000, 250000], unit: '₽' })
     ];
-    nextMilestones(Math.floor(stats.work / 60), 10, 6).forEach((target) => catalog.push([`Рабочие часы ×${target}`, Math.floor(stats.work / 60) >= target, Math.floor(stats.work / 60), target, `Накопить ${target} часов зачтённой работы.`]));
-    nextMilestones(stats.fullDays, 5, 6).forEach((target) => catalog.push([`Полные дни ×${target}`, stats.fullDays >= target, stats.fullDays, target, `Закрыть ${target} полных рабочих дней.`]));
-    nextMilestones(Math.floor(focus / 60), 2, 5).forEach((target) => catalog.push([`Фокус ×${target}ч`, Math.floor(focus / 60) >= target, Math.floor(focus / 60), target, `Накопить ${target} часов фокуса.`]));
-    nextMilestones(Math.floor(sportMinutes / 60), 2, 5).forEach((target) => catalog.push([`Спорт ×${target}ч`, Math.floor(sportMinutes / 60) >= target, Math.floor(sportMinutes / 60), target, `Накопить ${target} часов спорта или прогулок.`]));
-    nextMilestones(sports.entries.length, Math.max(1, targetPerWeek), 5).forEach((target) => catalog.push([`Тренировки ×${target}`, sports.entries.length >= target, sports.entries.length, target, `Сделать ${target} спортивных активностей. Цель: ${targetPerWeek}/нед.`]));
-    nextMilestones(Math.floor(selfMinutes / 60), 2, 6).forEach((target) => catalog.push([`Саморазвитие ×${target}ч`, Math.floor(selfMinutes / 60) >= target, Math.floor(selfMinutes / 60), target, `Накопить ${target} часов книг, курсов, проектов или практики.`]));
-    nextMilestones(selfDev.entries.length, 5, 6).forEach((target) => catalog.push([`Сессии роста ×${target}`, selfDev.entries.length >= target, selfDev.entries.length, target, `Провести ${target} сессий саморазвития.`]));
-    nextMilestones(notes, 7, 5).forEach((target) => catalog.push([`Дневник ×${target}`, notes >= target, notes, target, `Оставить ${target} заметок дня.`]));
-    nextMilestones(state.projects.length, 3, 4).forEach((target) => catalog.push([`Проекты ×${target}`, state.projects.length >= target, state.projects.length, target, `Добавить ${target} проектов.`]));
-    nextMilestones(bookPages, 100, 4).forEach((target) => catalog.push([`Страницы ×${target}`, bookPages >= target, bookPages, target, `Прочитать ${target} страниц.`]));
-    nextMilestones(booksDone, 1, 4).forEach((target) => catalog.push([`Книги ×${target}`, booksDone >= target, booksDone, target, `Завершить ${target} книг.`]));
-    nextMilestones(courseLessons, 10, 4).forEach((target) => catalog.push([`Уроки ×${target}`, courseLessons >= target, courseLessons, target, `Пройти ${target} уроков.`]));
-    nextMilestones(coursesDone, 1, 4).forEach((target) => catalog.push([`Курсы ×${target}`, coursesDone >= target, coursesDone, target, `Завершить ${target} курсов.`]));
-    nextMilestones(projectsDone, 1, 4).forEach((target) => catalog.push([`Релизы ×${target}`, projectsDone >= target, projectsDone, target, `Закрыть ${target} проектов на 100% или статусом Готово.`]));
-    return catalog;
   }
 
   function renderAchievements() {
     const xp = earnedXp();
     const lvl = levelFromXp(xp);
+    const rank = playerRank(lvl.level);
+    const achievements = achievementCatalog();
+    const unlockedTotal = achievements.reduce((sum, item) => sum + item.unlocked, 0);
+    const possibleShown = achievements.reduce((sum, item) => sum + Math.min(item.targets.length, ACHIEVEMENT_TIERS.length), 0);
+    const nearest = achievements
+      .filter((item) => item.unlocked < item.targets.length)
+      .sort((a, b) => b.pct - a.pct)
+      .slice(0, 4);
+    const tierCounts = ACHIEVEMENT_TIERS.map((tier, index) => ({
+      ...tier,
+      count: achievements.filter((item) => item.unlocked > index).length
+    }));
+
     $('#xpBox').innerHTML = `
-      <div class="xp-level">Lv. ${lvl.level}</div>
-      <p class="muted">${xp} XP · до следующего уровня ${Math.max(0, lvl.need - lvl.into)} XP</p>
+      <div class="achievement-hero">
+        <div>
+          <div class="xp-level">Lv. ${lvl.level}</div>
+          <p class="rank-title">${escapeHtml(rank.name)}</p>
+          <p class="muted">${escapeHtml(rank.desc)} · ${xp} XP · до следующего уровня ${Math.max(0, lvl.need - lvl.into)} XP</p>
+        </div>
+        <div class="rank-medal">${tierAt(Math.max(0, Math.floor(lvl.level / 10))).icon}</div>
+      </div>
       <div class="progress big"><span style="width:${lvl.pct}%"></span></div>
-      <p class="muted small">Ачивки бесконечные: LifeOS генерирует новые рубежи по часам, дням, спорту, саморазвитию, фокусу, заметкам и проектам.</p>
+      <div class="achievement-summary">
+        <article><strong>${unlockedTotal}</strong><span>уровней получено</span></article>
+        <article><strong>${achievements.length}</strong><span>линеек ачивок</span></article>
+        <article><strong>${possibleShown}</strong><span>видимых рубежей</span></article>
+      </div>
+      <div class="tier-strip">
+        ${tierCounts.map((tier) => `<span class="tier-pill ${tier.className}">${tier.icon} ${tier.name}: ${tier.count}</span>`).join('')}
+      </div>
+      <div class="next-achievements">
+        <strong>Ближайшие рубежи</strong>
+        ${nearest.length ? nearest.map((item) => `<p>${item.icon} ${escapeHtml(item.title)}: ${progressLabel(item.current, item.unit)} / ${progressLabel(item.nextTarget, item.unit)}</p>`).join('') : '<p>Все текущие рубежи закрыты. LifeOS уже генерирует следующие.</p>'}
+      </div>
     `;
-    const rows = achievementCatalog()
-      .sort((a, b) => Number(b[1]) - Number(a[1]) || (a[3] - b[3]))
-      .slice(0, 42);
-    $('#achievementList').innerHTML = rows.map(([name, unlocked, current, target, desc]) => {
-      const pct = percent(current, target);
+
+    const groups = [...new Set(achievements.map((item) => item.group))];
+    $('#achievementList').innerHTML = groups.map((group) => {
+      const items = achievements.filter((item) => item.group === group);
+      const groupUnlocked = items.reduce((sum, item) => sum + item.unlocked, 0);
       return `
-        <article class="list-card achievement ${unlocked ? 'unlocked' : 'locked'}">
-          <strong>${unlocked ? '✅' : '🔒'} ${escapeHtml(name)}</strong>
-          <p>${escapeHtml(desc)} · ${Math.min(current, target)} / ${target}</p>
-          <div class="progress"><span style="width:${pct}%"></span></div>
-        </article>
+        <section class="achievement-group">
+          <div class="achievement-group-head"><h4>${escapeHtml(group)}</h4><span>${groupUnlocked} ур.</span></div>
+          <div class="achievement-grid">
+            ${items.map((item) => {
+              const currentTier = item.unlocked ? item.tier : item.nextTier;
+              const shownTargets = item.targets.slice(0, Math.max(ACHIEVEMENT_TIERS.length, item.unlocked + 2));
+              return `
+                <article class="achievement-card ${item.done ? 'unlocked' : 'locked'} ${currentTier.className}">
+                  <div class="achievement-top">
+                    <span class="achievement-icon">${item.icon}</span>
+                    <div><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.desc)}</p></div>
+                  </div>
+                  <div class="achievement-meta">
+                    <span>${item.unlocked ? `${item.tier.icon} ${item.tier.name} · ур. ${item.unlocked}` : '🔒 не открыто'}</span>
+                    <span>${progressLabel(item.current, item.unit)} / ${progressLabel(item.nextTarget, item.unit)}</span>
+                  </div>
+                  <div class="progress"><span style="width:${item.pct}%"></span></div>
+                  <div class="ladder">
+                    ${shownTargets.map((target, index) => {
+                      const tier = tierAt(index);
+                      const status = item.current >= target ? 'done' : index === item.unlocked ? 'next' : 'future';
+                      return `<span class="ladder-step ${status} ${tier.className}" title="${tier.name}: ${progressLabel(target, item.unit)}">${tier.icon}</span>`;
+                    }).join('')}
+                  </div>
+                </article>
+              `;
+            }).join('')}
+          </div>
+        </section>
       `;
     }).join('');
   }

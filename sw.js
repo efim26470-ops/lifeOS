@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifeos-v16-profiles-reports-hotfix1';
+const CACHE_NAME = 'lifeos-v16-1-achievements';
 const CORE_ASSETS = [
   './',
   './index.html',
