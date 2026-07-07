@@ -1,10 +1,10 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '16.1-achievements';
+  const APP_VERSION = '16.1.1-safe-achievements';
   const DATA_VERSION = 16;
-  const KEY = 'lifeos.v16.1.achievements';
-  const LEGACY_KEYS = ['lifeos.v16.profiles.reports.hotfix1','lifeos.v16.profiles.reports','lifeos.v15.modules','lifeos.v14.active','lifeos.v13.today','lifeos.v12.stability','lifeos.v11.v8base.complete','lifeos.v10.stable','lifeos.v9.complete','lifeos.v8.rings','lifeos.v7.design', 'lifeos.v5.configurable', 'lifeos.v4.final', 'lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
+  const KEY = 'lifeos.v16.1.1.safe';
+  const LEGACY_KEYS = ['lifeos.v16.1.achievements','lifeos.v16.profiles.reports.hotfix1','lifeos.v16.profiles.reports','lifeos.v15.modules','lifeos.v14.active','lifeos.v13.today','lifeos.v12.stability','lifeos.v11.v8base.complete','lifeos.v10.stable','lifeos.v9.complete','lifeos.v8.rings','lifeos.v7.design', 'lifeos.v5.configurable', 'lifeos.v4.final', 'lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
   const DEFAULT_START = '2026-07-03';
   const DEFAULT_END = '2026-08-31';
   const DAY_LABELS = [
@@ -829,10 +829,14 @@
 
   function earnedXp() {
     const stats = periodStats();
-    const focus = state.focusSessions.reduce((sum, s) => sum + (s.minutes || 0), 0);
+    const focusList = Array.isArray(state.focusSessions) ? state.focusSessions : [];
+    const projectList = Array.isArray(state.projects) ? state.projects : [];
+    const bookList = Array.isArray(state.books) ? state.books : [];
+    const courseList = Array.isArray(state.courses) ? state.courses : [];
+    const focus = focusList.reduce((sum, s) => sum + (s.minutes || 0), 0);
     const sport = sportEntries().reduce((sum, entry) => sum + Math.max(0, timeToMinutes(entry.end) - timeToMinutes(entry.start)), 0);
     const self = selfDevEntries().reduce((sum, entry) => sum + Math.max(0, timeToMinutes(entry.end) - timeToMinutes(entry.start)), 0);
-    const notes = Object.values(state.dayMeta).filter((m) => m.note && m.note.trim()).length;
+    const notes = Object.values(state.dayMeta || {}).filter((m) => m.note && m.note.trim()).length;
     const habitChecks = Object.values(state.habitChecks).reduce((sum, checks) => sum + Object.values(checks || {}).filter(Boolean).length, 0);
     const backups = Number(localStorageSafeGet('lifeos.lastBackupCount') || 0);
     return Math.round(stats.fullDays * 90 + stats.partialDays * 35 + Math.floor(focus / 25) * 25 + Math.floor(sport / 30) * 12 + Math.floor(self / 30) * 14 + notes * 10 + habitChecks * 8 + backups * 40);
@@ -969,42 +973,56 @@
     panel.classList.toggle('hidden', Boolean(state.onboardingDone));
   }
 
+  function safeRenderBlock(name, fn) {
+    try {
+      fn();
+    } catch (error) {
+      console.error(`LifeOS render block failed: ${name}`, error);
+      setHealthError(error);
+      const box = document.querySelector('#diagnosticsSummary');
+      if (box) box.textContent = `Последняя ошибка в блоке: ${name}. Данные сохранены.`;
+    }
+  }
+
   function renderAll() {
     applyTheme();
     updateStorageBanner();
     renderDiagnostics().catch(() => {});
-    renderOnboarding();
-    renderHero();
-    renderRings();
-    renderWeeklyRings();
-    renderDashboard();
-    renderWork();
-    renderDay();
-    renderCalendar();
-    renderJournal();
-    renderGoals();
-    renderHabits();
-    renderFocus();
-    renderActiveTimers();
-    renderSport();
-    renderSelfDev();
-    renderBooks();
-    renderCourses();
-    renderMoney();
-    renderProjects();
-    renderAchievements();
-    renderFinanceForm();
-    renderConfigForms();
-    renderCustomTypeSettings();
-    renderEntryTypeOptions();
-    renderSportTypeOptions();
-    renderSelfTypeOptions();
-    renderDesignSettings();
-    renderEnhancementSettings();
-    renderHistoryDays();
-    renderMiniMode();
-    renderProfileSettings();
-    renderReportPreview(false);
+    const blocks = [
+      ['onboarding', renderOnboarding],
+      ['hero', renderHero],
+      ['rings', renderRings],
+      ['weeklyRings', renderWeeklyRings],
+      ['dashboard', renderDashboard],
+      ['work', renderWork],
+      ['day', renderDay],
+      ['calendar', renderCalendar],
+      ['journal', renderJournal],
+      ['goals', renderGoals],
+      ['habits', renderHabits],
+      ['focus', renderFocus],
+      ['activeTimers', renderActiveTimers],
+      ['sport', renderSport],
+      ['selfDev', renderSelfDev],
+      ['books', renderBooks],
+      ['courses', renderCourses],
+      ['money', renderMoney],
+      ['projects', renderProjects],
+      ['achievements', renderAchievements],
+      ['financeForm', renderFinanceForm],
+      ['configForms', renderConfigForms],
+      ['customTypes', renderCustomTypeSettings],
+      ['entryTypeOptions', renderEntryTypeOptions],
+      ['sportTypeOptions', renderSportTypeOptions],
+      ['selfTypeOptions', renderSelfTypeOptions],
+      ['designSettings', renderDesignSettings],
+      ['enhancementSettings', renderEnhancementSettings],
+      ['historyDays', renderHistoryDays],
+      ['miniMode', renderMiniMode],
+      ['profileSettings', renderProfileSettings],
+      ['reportPreview', () => renderReportPreview(false)]
+    ];
+    blocks.forEach(([name, fn]) => safeRenderBlock(name, fn));
   }
 
   function renderHero() {
@@ -2525,10 +2543,14 @@
 
   function achievementCatalog() {
     const stats = periodStats();
-    const focus = state.focusSessions.reduce((sum, s) => sum + (s.minutes || 0), 0);
+    const focusList = Array.isArray(state.focusSessions) ? state.focusSessions : [];
+    const projectList = Array.isArray(state.projects) ? state.projects : [];
+    const bookList = Array.isArray(state.books) ? state.books : [];
+    const courseList = Array.isArray(state.courses) ? state.courses : [];
+    const focus = focusList.reduce((sum, s) => sum + (s.minutes || 0), 0);
     const focusHours = Math.floor(focus / 60);
-    const focusSessions = state.focusSessions.length;
-    const entries = state.entries.length;
+    const focusSessions = focusList.length;
+    const entries = Array.isArray(state.entries) ? state.entries.length : 0;
     const sports = sportStats();
     const sportMinutes = sports.total;
     const sportHours = Math.floor(sportMinutes / 60);
@@ -2539,14 +2561,14 @@
     const selfMinutes = selfDev.total;
     const selfHours = Math.floor(selfMinutes / 60);
     const selfSessions = selfDev.entries.length;
-    const notes = Object.values(state.dayMeta).filter((m) => m.note && m.note.trim()).length;
+    const notes = Object.values(state.dayMeta || {}).filter((m) => m.note && m.note.trim()).length;
     const habitChecks = completedHabitsCount();
-    const booksDone = (state.books || []).filter((b) => b.status === 'Закончил' || (Number(b.totalPages || 0) > 0 && Number(b.currentPage || 0) >= Number(b.totalPages || 0))).length;
-    const coursesDone = (state.courses || []).filter((c) => c.status === 'Закончил' || (Number(c.totalLessons || 0) > 0 && Number(c.doneLessons || 0) >= Number(c.totalLessons || 0))).length;
-    const bookPages = (state.books || []).reduce((sum, b) => sum + Number(b.currentPage || 0), 0);
-    const courseLessons = (state.courses || []).reduce((sum, c) => sum + Number(c.doneLessons || 0), 0);
-    const projectsDone = state.projects.filter((p) => Number(p.progress || 0) >= 100 || p.status === 'Готово').length;
-    const projectProgressSum = state.projects.reduce((sum, p) => sum + Number(p.progress || 0), 0);
+    const booksDone = bookList.filter((b) => b.status === 'Закончил' || (Number(b.totalPages || 0) > 0 && Number(b.currentPage || 0) >= Number(b.totalPages || 0))).length;
+    const coursesDone = courseList.filter((c) => c.status === 'Закончил' || (Number(c.totalLessons || 0) > 0 && Number(c.doneLessons || 0) >= Number(c.totalLessons || 0))).length;
+    const bookPages = bookList.reduce((sum, b) => sum + Number(b.currentPage || 0), 0);
+    const courseLessons = courseList.reduce((sum, c) => sum + Number(c.doneLessons || 0), 0);
+    const projectsDone = projectList.filter((p) => Number(p.progress || 0) >= 100 || p.status === 'Готово').length;
+    const projectProgressSum = projectList.reduce((sum, p) => sum + Number(p.progress || 0), 0);
     const jsonBackups = Number(localStorageSafeGet('lifeos.lastBackupCount') || 0);
     const customCategoriesCount = customCategories().length;
     const templatesCount = (state.customTemplates || []).length;
@@ -2576,7 +2598,7 @@
       makeAchievement({ id: 'books-done', group: 'Книги', icon: '🏁', title: 'Завершённые книги', desc: 'Дочитывать книги до конца.', current: booksDone, targets: [1, 2, 3, 5, 10, 20, 50], unit: 'кн.' }),
       makeAchievement({ id: 'course-lessons', group: 'Курсы', icon: '🎓', title: 'Уроки', desc: 'Проходить уроки в курсах.', current: courseLessons, targets: [1, 5, 10, 25, 50, 100, 250, 500], unit: 'ур.' }),
       makeAchievement({ id: 'courses-done', group: 'Курсы', icon: '📜', title: 'Завершённые курсы', desc: 'Закрывать курсы полностью.', current: coursesDone, targets: [1, 2, 3, 5, 10, 20], unit: 'курс.' }),
-      makeAchievement({ id: 'projects', group: 'Проекты', icon: '🚀', title: 'Проекты', desc: 'Вести GitHub Pages и личные проекты.', current: state.projects.length, targets: [1, 3, 5, 10, 20, 50], unit: 'пр.' }),
+      makeAchievement({ id: 'projects', group: 'Проекты', icon: '🚀', title: 'Проекты', desc: 'Вести GitHub Pages и личные проекты.', current: projectList.length, targets: [1, 3, 5, 10, 20, 50], unit: 'пр.' }),
       makeAchievement({ id: 'releases', group: 'Проекты', icon: '✅', title: 'Релизы', desc: 'Доводить проекты до 100% или статуса «Готово».', current: projectsDone, targets: [1, 2, 3, 5, 10, 20], unit: 'рел.' }),
       makeAchievement({ id: 'project-progress', group: 'Проекты', icon: '📈', title: 'Суммарный прогресс', desc: 'Прокачивать прогресс по всем проектам.', current: projectProgressSum, targets: [100, 250, 500, 1000, 2500], unit: '%' }),
       makeAchievement({ id: 'custom-categories', group: 'Кастомизация', icon: '🧩', title: 'Своя система', desc: 'Создавать собственные категории и кольца.', current: customCategoriesCount, targets: [1, 2, 3, 5, 10, 20], unit: 'кат.' }),
@@ -3476,7 +3498,7 @@
     updateStandaloneClass();
     if (window.matchMedia) window.matchMedia('(display-mode: standalone)').addEventListener?.('change', updateStandaloneClass);
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').catch((error) => console.warn('SW registration failed', error));
+      navigator.serviceWorker.register('./sw.js?v=16.1.1').then((reg) => reg.update && reg.update()).catch((error) => console.warn('SW registration failed', error));
     }
     window.addEventListener('beforeinstallprompt', (event) => {
       event.preventDefault();
@@ -3550,7 +3572,19 @@
     }, 120);
   });
 
-  window.addEventListener('error', (event) => showFatalError(event.error || event.message));
+  window.addEventListener('error', (event) => {
+    const target = event.target || event.srcElement;
+    const isResourceError = target && target !== window && (target.tagName === 'SCRIPT' || target.tagName === 'LINK' || target.tagName === 'IMG');
+    if (isResourceError) {
+      console.warn('LifeOS resource loading error', target.src || target.href || target.currentSrc || target.tagName);
+      return;
+    }
+    if (!event.error && (event.message === 'Script error.' || event.message === 'Script error')) {
+      console.warn('LifeOS ignored generic browser Script error. Try refreshing if UI is incomplete.');
+      return;
+    }
+    showFatalError(event.error || event.message);
+  });
   window.addEventListener('unhandledrejection', (event) => showFatalError(event.reason || 'Unhandled promise rejection'));
   document.addEventListener('DOMContentLoaded', () => bootstrap().catch(showFatalError));
 })();

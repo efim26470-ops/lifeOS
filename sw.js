@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifeos-v16-1-achievements';
+const CACHE_NAME = 'lifeos-v16-1-1-safe-achievements';
 const CORE_ASSETS = [
   './',
   './index.html',

@@ -967,3 +967,225 @@ body[data-theme="music"] .bg-orb-1{background:#fb2d8f}body[data-theme="music"] .
 /* v16.1 Achievements — tiered badges */
 .achievement-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:14px}.rank-title{margin:2px 0 4px;font-size:22px;font-weight:950;letter-spacing:-.04em}.rank-medal{width:64px;height:64px;display:grid;place-items:center;border-radius:22px;background:linear-gradient(145deg,rgba(255,255,255,.18),rgba(255,255,255,.04));border:1px solid var(--line);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 18px 34px rgba(0,0,0,.18);font-size:34px}.achievement-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}.achievement-summary article{padding:14px;border-radius:18px;background:var(--panel-strong);border:1px solid var(--line)}.achievement-summary strong{display:block;font-size:24px;font-weight:950;letter-spacing:-.04em}.achievement-summary span{display:block;margin-top:2px;color:var(--muted);font-size:12px;font-weight:800}.tier-strip{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.tier-pill{padding:8px 10px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.06);font-size:12px;font-weight:900}.next-achievements{margin-top:12px;padding:14px;border-radius:20px;background:linear-gradient(145deg,rgba(96,165,250,.14),rgba(168,85,247,.12));border:1px solid rgba(147,197,253,.18)}.next-achievements strong{display:block;margin-bottom:8px}.next-achievements p{margin:6px 0;color:var(--muted);font-weight:800}.achievement-group{margin-bottom:18px}.achievement-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:2px 0 10px}.achievement-group-head h4{margin:0;font-size:18px;letter-spacing:-.03em}.achievement-group-head span{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid var(--line);font-weight:900;color:var(--muted);font-size:12px}.achievement-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.achievement-card{position:relative;overflow:hidden;padding:15px;border-radius:24px;border:1px solid var(--line);background:linear-gradient(145deg,rgba(255,255,255,.09),rgba(255,255,255,.035));box-shadow:inset 0 1px 0 rgba(255,255,255,.08);transition:transform .25s ease,border-color .25s ease,opacity .25s ease}.achievement-card:before{content:"";position:absolute;inset:-80px auto auto -80px;width:160px;height:160px;border-radius:999px;filter:blur(22px);opacity:.12;background:currentColor}.achievement-card.unlocked{opacity:1;border-color:rgba(255,255,255,.18)}.achievement-card.locked{opacity:.78}.achievement-card:hover{transform:translateY(-2px)}.achievement-top{position:relative;display:flex;gap:12px;align-items:flex-start}.achievement-icon{width:44px;height:44px;flex:0 0 44px;display:grid;place-items:center;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid var(--line);font-size:23px}.achievement-top strong{display:block;font-size:16px;line-height:1.12}.achievement-top p{margin:5px 0 0;color:var(--muted);font-size:12px;line-height:1.35;font-weight:750}.achievement-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:14px 0 9px;color:var(--muted);font-size:12px;font-weight:950}.ladder{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}.ladder-step{width:30px;height:30px;display:grid;place-items:center;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.05);font-size:15px;filter:saturate(.65);opacity:.55}.ladder-step.done{opacity:1;filter:saturate(1.15);box-shadow:0 0 0 3px rgba(255,255,255,.04),0 8px 22px rgba(0,0,0,.2)}.ladder-step.next{opacity:1;border-style:dashed;animation:achievement-pulse 1.8s ease-in-out infinite}.tier-bronze{color:#d08a4f}.tier-silver{color:#dbe4ee}.tier-gold{color:#ffd166}.tier-platinum{color:#93c5fd}.tier-ultra{color:#c084fc}.tier-legend{color:#fb7185}@keyframes achievement-pulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(147,197,253,.0)}50%{transform:scale(1.07);box-shadow:0 0 0 6px rgba(147,197,253,.10)}}
 @media(max-width:760px){.achievement-grid{grid-template-columns:1fr}.achievement-summary{grid-template-columns:1fr}.achievement-hero{align-items:center}.rank-medal{width:54px;height:54px;border-radius:18px;font-size:29px}.achievement-card{border-radius:22px;padding:14px}.achievement-meta{align-items:flex-start;flex-direction:column}.ladder-step{width:28px;height:28px}}
+
+/* LifeOS v16.1.1 Safe Achievements — mobile/iPhone hotfix overrides */
+:root{
+  --dock-h: 72px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+html, body{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden!important;
+}
+body{
+  padding-top:0!important;
+  min-width:0!important;
+  -webkit-text-size-adjust:100%;
+}
+.app-shell, main, .view, .panel, .card, .hero, .topbar, .tabs,
+.metric-grid, .dashboard-grid, .two-columns, .form-row, .filter-row,
+.today-layout, .today-rings-wrap, .profile-grid, .achievement-grid{
+  min-width:0!important;
+  max-width:100%!important;
+}
+.hero h2, .section-head h3, .rank-title, .next-action-card strong,
+.hero-alert, #heroScheduleSummary, .metric strong, .entry-card, .list-card{
+  overflow-wrap:anywhere;
+}
+
+/* Do not let the header float over cards on Safari/iPhone. */
+@media (max-width: 860px){
+  .app-shell{
+    width:100%!important;
+    margin:0!important;
+    padding:
+      calc(10px + env(safe-area-inset-top,0px))
+      max(12px, env(safe-area-inset-right,0px))
+      calc(var(--dock-h) + 52px + env(safe-area-inset-bottom,0px))
+      max(12px, env(safe-area-inset-left,0px))!important;
+    gap:12px!important;
+  }
+  .topbar{
+    position:static!important;
+    top:auto!important;
+    z-index:1!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:12px!important;
+    padding:14px!important;
+    margin:0!important;
+    transform:none!important;
+  }
+  .brand{
+    align-items:center!important;
+    width:100%!important;
+  }
+  .brand-mark{
+    width:48px!important;
+    height:48px!important;
+    flex:0 0 48px!important;
+  }
+  .top-actions{
+    display:grid!important;
+    grid-template-columns:minmax(0, 1fr) minmax(0, 1fr)!important;
+    width:100%!important;
+    gap:10px!important;
+  }
+  .top-actions > *{
+    width:100%!important;
+    min-height:46px!important;
+  }
+  .top-actions .select{
+    min-width:0!important;
+  }
+  .hero{
+    margin:0!important;
+    padding:16px!important;
+  }
+  .hero h2{
+    font-size:clamp(27px, 8.4vw, 38px)!important;
+    line-height:1.04!important;
+  }
+  #heroScheduleSummary{
+    max-height:none!important;
+    overflow:visible!important;
+    line-height:1.42!important;
+  }
+  .metric-grid.hero-metrics,
+  .metric-grid,
+  .metric-grid.wide,
+  .dashboard-grid,
+  .two-columns,
+  .form-row,
+  .filter-row,
+  .profile-grid,
+  .achievement-grid,
+  .achievement-summary{
+    grid-template-columns:1fr!important;
+  }
+  .span-2{grid-column:auto!important;}
+  .metric{
+    min-height:78px!important;
+    padding:14px!important;
+  }
+  .tabs{
+    position:fixed!important;
+    left:max(10px, env(safe-area-inset-left,0px))!important;
+    right:max(10px, env(safe-area-inset-right,0px))!important;
+    bottom:calc(10px + env(safe-area-inset-bottom,0px))!important;
+    top:auto!important;
+    z-index:90!important;
+    height:var(--dock-h)!important;
+    max-height:var(--dock-h)!important;
+    display:flex!important;
+    align-items:center!important;
+    gap:8px!important;
+    padding:8px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    border-radius:28px!important;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+  }
+  .tab{
+    flex:0 0 auto!important;
+    min-width:86px!important;
+    height:54px!important;
+    padding:7px 11px!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:6px!important;
+    font-size:13px!important;
+    line-height:1!important;
+  }
+  .tab.active{min-width:106px!important;}
+  .tabs .tab::before{
+    margin-right:0!important;
+    flex:0 0 23px!important;
+  }
+  .toast{
+    bottom:calc(var(--dock-h) + 24px + env(safe-area-inset-bottom,0px))!important;
+    left:max(12px, env(safe-area-inset-left,0px))!important;
+    right:max(12px, env(safe-area-inset-right,0px))!important;
+    width:auto!important;
+    max-width:none!important;
+    transform:none!important;
+  }
+  .fatal-error{
+    align-items:flex-start!important;
+    padding:
+      calc(16px + env(safe-area-inset-top,0px))
+      max(10px, env(safe-area-inset-right,0px))
+      calc(16px + env(safe-area-inset-bottom,0px))
+      max(10px, env(safe-area-inset-left,0px))!important;
+    overflow:auto!important;
+    -webkit-overflow-scrolling:touch;
+  }
+  .fatal-card{
+    width:100%!important;
+    margin:0 auto!important;
+    padding:18px!important;
+    border-radius:28px!important;
+  }
+  .fatal-card h2{
+    font-size:clamp(28px, 8vw, 42px)!important;
+    line-height:1.08!important;
+    overflow-wrap:anywhere;
+  }
+  .fatal-card pre{
+    white-space:pre-wrap!important;
+    overflow:auto!important;
+    font-size:14px!important;
+  }
+  .today-layout,
+  .today-rings-wrap{
+    grid-template-columns:1fr!important;
+  }
+  .today-action-grid{
+    grid-template-columns:1fr 1fr!important;
+  }
+  .quick-grid,
+  .button-grid,
+  .mini-mode-grid{
+    grid-template-columns:1fr 1fr!important;
+  }
+  .quick-card,
+  .mini-big-btn{
+    min-height:84px!important;
+  }
+  .achievement-hero{
+    display:grid!important;
+    grid-template-columns:1fr auto!important;
+    align-items:center!important;
+  }
+  .achievement-card:hover{transform:none!important;}
+  input, select, textarea{
+    font-size:16px!important;
+  }
+}
+
+@media (max-width: 430px){
+  .app-shell{
+    padding-left:max(8px, env(safe-area-inset-left,0px))!important;
+    padding-right:max(8px, env(safe-area-inset-right,0px))!important;
+  }
+  .topbar, .hero, .card, .panel{border-radius:22px!important;}
+  .top-actions{grid-template-columns:1fr 1fr!important;}
+  .hero h2{font-size:29px!important;}
+  .section-head h3{font-size:21px!important;}
+  .quick-grid,
+  .button-grid,
+  .today-action-grid,
+  .mini-mode-grid{
+    grid-template-columns:1fr!important;
+  }
+  .tabs{height:68px!important;max-height:68px!important;}
+  :root{--dock-h:68px;}
+  .tab{min-width:80px!important;font-size:12px!important;}
+  .tab.active{min-width:98px!important;}
+  .achievement-hero{grid-template-columns:1fr!important;}
+  .rank-medal{justify-self:start;}
+}

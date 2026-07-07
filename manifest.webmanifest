@@ -1,7 +1,7 @@
 {
-  "name": "LifeOS v16.1 — Achievements",
+  "name": "LifeOS v16.1.1",
   "short_name": "LifeOS",
-  "description": "PWA LifeOS: работа, спорт, саморазвитие, таймеры, модули, профили, отчёты и уровневые ачивки.",
+  "description": "Стабильная PWA-панель LifeOS с кольцами, достижениями, профилями, отчетами и iPhone hotfix.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
