@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="theme-color" content="#0b1020">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="LifeOS">
-  <meta name="description" content="LifeOS — локальная PWA-панель контроля работы, времени, денег, проектов и привычек.">
-  <title>LifeOS</title>
+  <meta name="description" content="LifeOS — локальная PWA-панель дня: работа, спорт, саморазвитие, кольца, журнал, отчёты и цели.">
+  <title>LifeOS v9</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
@@ -16,571 +16,287 @@
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <div class="bg-orb bg-orb-1"></div>
-  <div class="bg-orb bg-orb-2"></div>
-  <div class="bg-orb bg-orb-3"></div>
+  <div class="orb orb-a"></div><div class="orb orb-b"></div><div class="orb orb-c"></div>
 
-  <div id="onboarding" class="onboarding hidden" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
-    <div class="onboarding-card panel">
+  <section id="onboarding" class="onboarding hidden" aria-label="Первичная настройка LifeOS">
+    <div class="panel setup-card">
+      <div class="app-badge"><img src="./icons/icon-192.png" alt=""><span>LifeOS v9</span></div>
       <p class="eyebrow">Первый запуск</p>
-      <h2 id="setupTitle">Настрой LifeOS под свой график</h2>
-      <p class="muted">Выбери период работы, рабочие дни и желаемое количество тренировок в неделю. Потом всё можно изменить в настройках.</p>
-      <form id="setupForm" class="form setup-form">
-        <div class="form-row">
-          <label class="field">Начало периода<input class="input" type="date" id="setupStartDate" required></label>
-          <label class="field">Конец периода<input class="input" type="date" id="setupEndDate" required></label>
+      <h1>Настрой LifeOS под свой ритм</h1>
+      <p class="muted">Выбери рабочий период, график по дням, цель тренировок и саморазвития. Всё можно поменять позже в настройках.</p>
+      <form id="setupForm" class="form">
+        <div class="form-grid two">
+          <label class="field">Начало периода<input id="setupStart" class="input" type="date" required></label>
+          <label class="field">Конец периода<input id="setupEnd" class="input" type="date" required></label>
         </div>
-        <label class="field">Желаемых тренировок в неделю<input class="input" type="number" id="setupWorkoutTarget" min="0" max="14" step="1" required></label>
-        <div class="setup-block">
-          <div class="section-head compact-head"><div><p class="eyebrow">График</p><h3>Рабочие дни и часы</h3></div></div>
-          <div id="setupScheduleGrid" class="schedule-grid"></div>
+        <div class="form-grid two">
+          <label class="field">Тренировок в неделю<input id="setupSportTarget" class="input" type="number" min="0" max="14" step="1" required></label>
+          <label class="field">Саморазвитие в день, мин<input id="setupSelfTarget" class="input" type="number" min="0" max="480" step="5" required></label>
         </div>
-        <div class="button-row stretch">
-          <button class="soft-btn" type="button" id="setupDefaultBtn">Вернуть стандарт</button>
+        <div class="subpanel">
+          <div class="section-head tight"><div><p class="eyebrow">График</p><h2>Рабочие дни и часы</h2></div></div>
+          <div id="setupSchedule" class="schedule-list"></div>
+        </div>
+        <div class="button-row sticky-actions">
+          <button class="soft-btn" type="button" id="setupDefault">Стандарт</button>
           <button class="primary-btn" type="submit">Запустить LifeOS</button>
         </div>
       </form>
     </div>
-  </div>
+  </section>
 
-  <div id="storageBanner" class="storage-banner" hidden>
-    <span id="storageBannerText">Хранилище проверяется...</span>
-  </div>
+  <div id="toast" class="toast" role="status"></div>
 
   <div class="app-shell">
     <header class="topbar panel">
       <div class="brand">
-        <div class="brand-mark">L</div>
-        <div>
-          <p class="eyebrow">offline PWA · GitHub Pages</p>
-          <h1>LifeOS</h1>
-        </div>
+        <img class="brand-icon" src="./icons/icon-192.png" alt="LifeOS">
+        <div><p class="eyebrow">offline pwa · github pages</p><h1>LifeOS</h1></div>
       </div>
       <div class="top-actions">
-        <button class="soft-btn" id="installBtn" hidden>Установить</button>
-        <button class="soft-btn" id="quickBackupBtn">Бэкап</button>
-        <select id="themeSelect" class="select compact-select" aria-label="Тема оформления">
-          <option value="system">Системная</option>
-          <option value="light">iOS Light</option>
-          <option value="dark">iOS Dark</option>
-          <option value="midnight">Midnight</option>
-          <option value="aurora">Aurora</option>
-          <option value="fitness">Apple Fitness</option>
-          <option value="music">Apple Music</option>
-          <option value="journal">Apple Journal</option>
-          <option value="ios7">iOS 7 Frost</option>
-          <option value="ios13">iOS 13</option>
-          <option value="ios17">iOS 17 Pro</option>
-          <option value="ios18">iOS 18 Liquid</option>
-          <option value="aqua">Classic Aqua</option>
-          <option value="graphite">Graphite</option>
-          <option value="ipod">iPod</option>
-          <option value="snitch">Стукач</option>
-        </select>
+        <button id="installBtn" class="soft-btn compact" hidden>Установить</button>
+        <button id="backupTopBtn" class="soft-btn compact">Бэкап</button>
+        <select id="themeTop" class="select compact-select" aria-label="Тема"></select>
       </div>
     </header>
 
-    <section class="hero panel">
-      <div class="hero-copy">
-        <p class="eyebrow">Рабочий период</p>
-        <h2 id="heroPeriodTitle">3 июля — 31 августа 2026</h2>
-        <p id="heroScheduleSummary">Будни: 10:00–17:00 · Суббота: 10:00–14:00 · Воскресенье: выходной</p>
-        <div class="hero-alert" id="heroAlert">Загрузка LifeOS...</div>
-      </div>
-      <div class="metric-grid hero-metrics">
-        <article class="metric"><strong id="metricPercent">0%</strong><span>период</span></article>
-        <article class="metric"><strong id="metricWork">0ч</strong><span>работа</span></article>
-        <article class="metric"><strong id="metricLeft">330ч</strong><span>осталось</span></article>
-        <article class="metric"><strong id="metricLevel">Lv. 1</strong><span>уровень</span></article>
-      </div>
-    </section>
-
-    <nav class="tabs panel" aria-label="Разделы LifeOS">
-      <button class="tab active" data-tab="dashboard">Обзор</button>
-      <button class="tab" data-tab="work">Работа</button>
-      <button class="tab" data-tab="day">День</button>
-      <button class="tab" data-tab="calendar">Календарь</button>
-      <button class="tab" data-tab="journal">Журнал</button>
-      <button class="tab" data-tab="goals">Цели</button>
-      <button class="tab" data-tab="habits">Привычки</button>
-      <button class="tab" data-tab="focus">Фокус</button>
-      <button class="tab" data-tab="sport">Спорт</button>
-      <button class="tab" data-tab="selfdev">Саморазвитие</button>
-      <button class="tab" data-tab="money">Деньги</button>
-      <button class="tab" data-tab="projects">Проекты</button>
-      <button class="tab" data-tab="reports">Отчёты</button>
-      <button class="tab" data-tab="achievements">Достижения</button>
-      <button class="tab" data-tab="settings">Настройки</button>
-    </nav>
-
-    <main>
+    <main class="main">
       <section id="dashboard" class="view active">
-        <div class="grid dashboard-grid">
-          <article class="panel card span-2">
-            <div class="section-head">
-              <div>
-                <p class="eyebrow">Командный центр</p>
-                <h3 id="todayHeading">Сегодня</h3>
-              </div>
-              <input class="input date-input" type="date" id="selectedDate">
-            </div>
-            <div class="status-layout">
-              <div class="status-orb" id="dayOrb"><span id="dayPercent">0%</span></div>
-              <div>
-                <h4 id="dayStatusTitle">Рабочий день</h4>
-                <p class="muted" id="dayStatusText">LifeOS рассчитает план и факт.</p>
-                <div class="progress-meta"><span>План / факт выбранного дня</span><strong id="dayPlanFact">0 / 0</strong></div>
-                <div class="progress"><span id="dayProgress"></span></div>
-                <div class="button-row">
-                  <button class="primary-btn" id="startDayBtn">Начать день</button>
-                  <button class="soft-btn" id="closeDayBtn">Закрыть день</button>
-                  <button class="soft-btn" id="fillWorkDayBtn">Засчитать план работы</button>
-                </div>
-              </div>
-            </div>
-          </article>
-
-          <article class="panel card rings-panel span-2">
-            <div class="section-head">
-              <div><p class="eyebrow">Apple Fitness style</p><h3>Кольца дня</h3></div>
-              <button class="soft-btn" data-jump="selfdev">Саморазвитие</button>
-            </div>
-            <div class="rings-layout">
-              <div class="triple-rings" id="tripleRings" aria-label="Кольца выполнения целей"><span id="ringsCenterLabel">0%</span></div>
-              <div class="rings-list" id="ringsList"></div>
-            </div>
-            <div class="button-row stretch quick-complete-row">
-              <button class="primary-btn" id="quickCompleteWorkBtn" type="button">Закрыть работу</button>
-              <button class="soft-btn" id="quickCompleteSportBtn" type="button">Отметить спорт</button>
-              <button class="soft-btn" id="quickCompleteSelfBtn" type="button">Саморазвитие</button>
-            </div>
-          </article>
-
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Умные подсказки</p><h3>Антихаос</h3></div></div>
-            <div class="insight-list" id="insightList"></div>
-          </article>
-
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Состояние</p><h3>Настроение и заметка</h3></div></div>
-            <div class="mood-row" id="moodRow"></div>
-            <label class="field">Заметка дня
-              <textarea id="dailyNote" rows="5" maxlength="700" placeholder="Что получилось, что мешало, что важно завтра"></textarea>
-            </label>
-          </article>
-
-          <article class="panel card span-2">
-            <div class="section-head"><div><p class="eyebrow">Быстрая запись</p><h3>Шаблоны времени</h3></div></div>
-            <div class="quick-grid" id="quickTemplates"></div>
-          </article>
-
-          <article class="panel card span-2">
-            <div class="section-head"><div><p class="eyebrow">Сегодня</p><h3>Таймлайн выбранного дня</h3></div><button class="soft-btn" data-jump="day">Открыть день</button></div>
-            <div id="dashboardTimeline" class="timeline-visual"></div>
-            <div id="dashboardEntries" class="feed"></div>
-          </article>
-        </div>
-      </section>
-
-      <section id="work" class="view">
-        <div class="grid two-columns">
-          <article class="panel card span-2">
-            <div class="section-head"><div><p class="eyebrow">Рабочий контроль</p><h3>План, факт и прогноз</h3></div></div>
-            <div class="metric-grid wide" id="workMetricGrid"></div>
-            <div class="progress-meta"><span>Выполнение периода</span><strong id="workPeriodText">0%</strong></div>
-            <div class="progress big"><span id="workPeriodProgress"></span></div>
-          </article>
-
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Диагностика</p><h3>Проблемные дни</h3></div></div>
-            <div id="problemDays" class="problem-list"></div>
-          </article>
-
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Причины</p><h3>Куда уходит время</h3></div></div>
-            <div id="reasonStats" class="reason-list"></div>
-          </article>
-        </div>
-      </section>
-
-      <section id="day" class="view">
-        <div class="grid two-columns">
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Запись времени</p><h3>Интервал</h3></div></div>
-            <form id="entryForm" class="form">
-              <label class="field">Дата<input class="input" type="date" id="entryDate" required></label>
-              <div class="form-row">
-                <label class="field">Начало<input class="input" type="time" id="entryStart" step="60" required></label>
-                <label class="field">Конец<input class="input" type="time" id="entryEnd" step="60" required></label>
-              </div>
-              <label class="field">Вариант времяпрепровождения
-                <select class="select" id="entryType" required></select>
-              </label>
-              <label class="field hidden" id="customTypeWrap">Свой вариант<input class="input" type="text" id="entryCustomType" maxlength="60" placeholder="Например: звонки, документы, встреча"></label>
-              <div class="inline-tools">
-                <input class="input" id="quickCustomType" maxlength="60" placeholder="Быстро добавить свой вариант">
-                <button class="soft-btn" type="button" id="addQuickCustomTypeBtn">Добавить</button>
-              </div>
-              <label class="field">Заметка<textarea id="entryNote" rows="4" maxlength="360" placeholder="Короткое описание интервала"></textarea></label>
-              <button class="primary-btn full" type="submit">Добавить интервал</button>
-            </form>
-          </article>
-
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">День открыт / закрыт</p><h3 id="dayPanelTitle">Выбранный день</h3></div></div>
-            <div id="dayPlanBox" class="plan-box"></div>
-            <div class="timeline-visual" id="dayTimeline"></div>
-            <div class="button-row">
-              <button class="soft-btn" id="removeAutoWorkBtn">Снять авто-зачёт</button>
-              <button class="soft-btn" id="copyYesterdayBtn">Скопировать вчера</button>
-            </div>
-          </article>
-
-          <article class="panel card span-2">
-            <div class="section-head"><div><p class="eyebrow">Записи</p><h3>Лента дня</h3></div></div>
-            <div id="dayEntries" class="feed"></div>
-          </article>
-        </div>
-      </section>
-
-      <section id="calendar" class="view">
-        <article class="panel card">
-          <div class="section-head"><div><p class="eyebrow">Календарь продуктивности</p><h3>GitHub-график и календарь</h3></div><div class="legend"><span><i class="dot done"></i>полный</span><span><i class="dot partial"></i>частично</span><span><i class="dot missed"></i>пусто</span><span><i class="dot future"></i>план</span><span><i class="dot off"></i>выходной</span></div></div>
-          <div class="calendar-actions"><button class="soft-btn" data-calendar-filter="all">Все</button><button class="soft-btn" data-calendar-filter="missed">Пустые</button><button class="soft-btn" data-calendar-filter="work">Рабочие</button><button class="soft-btn" data-calendar-filter="partial">Частичные</button></div>
-          <div id="heatmap" class="heatmap"></div>
-          <div id="calendarGrid" class="calendar-grid"></div>
-        </article>
-      </section>
-
-      <section id="journal" class="view">
-        <article class="panel card">
-          <div class="section-head"><div><p class="eyebrow">Журнал</p><h3>Все интервалы</h3></div><button class="soft-btn" id="exportCsvBtn">CSV</button></div>
-          <div class="filter-row">
-            <label class="field filter-field">Дата
-              <input class="input" type="date" id="filterDate" min="2026-07-03" max="2026-08-31">
-            </label>
-            <label class="field filter-field">Тип
-              <select class="select" id="filterType"><option value="all">Все типы</option></select>
-            </label>
-            <label class="field filter-field">Поиск
-              <input class="input" type="search" id="filterSearch" placeholder="Поиск по типу или заметке">
-            </label>
-            <button class="soft-btn" id="resetFiltersBtn">Сброс</button>
+        <div class="hero panel widget" data-widget="hero">
+          <div>
+            <p class="eyebrow">Сегодня</p>
+            <h2 id="todayTitle">Сегодня</h2>
+            <p id="todaySubtitle" class="muted">Работа · спорт · саморазвитие</p>
           </div>
-          <div id="journalList" class="feed"></div>
-        </article>
+          <input id="activeDate" class="input date-input" type="date">
+        </div>
+
+        <section class="panel rings-card widget" data-widget="rings">
+          <div class="section-head"><div><p class="eyebrow">Apple Fitness style</p><h2>Кольца выполнения</h2></div><button class="soft-btn" data-tab-jump="settings">Настроить</button></div>
+          <div class="rings-stage">
+            <div id="tripleRings" class="triple-rings"><div class="rings-center"><strong id="ringsAverage">0%</strong><span>день</span></div></div>
+            <div id="ringsList" class="rings-list"></div>
+          </div>
+          <div class="quick-actions">
+            <button id="completeWorkBtn" class="primary-btn">Работа</button>
+            <button id="completeSportBtn" class="soft-btn">Спорт</button>
+            <button id="completeSelfBtn" class="soft-btn">Саморазвитие</button>
+            <button class="soft-btn" data-tab-jump="log">Свой вариант</button>
+          </div>
+        </section>
+
+        <section class="panel widget" data-widget="weekly">
+          <div class="section-head"><div><p class="eyebrow">Неделя</p><h2>Недельные кольца</h2></div><span id="weekLabel" class="pill">—</span></div>
+          <div id="weeklyRings" class="weekly-grid"></div>
+        </section>
+
+        <section class="panel widget" data-widget="planner">
+          <div class="section-head"><div><p class="eyebrow">Планировщик</p><h2>План дня</h2></div><button id="acceptPlanBtn" class="soft-btn">Принять план</button></div>
+          <div id="smartPlan" class="plan-list"></div>
+        </section>
+
+        <section class="panel widget" data-widget="quick">
+          <div class="section-head"><div><p class="eyebrow">Быстро</p><h2>Шаблоны</h2></div><button class="soft-btn" data-tab-jump="settings">Добавить</button></div>
+          <div id="quickTemplates" class="quick-grid"></div>
+        </section>
+
+        <section class="panel widget" data-widget="timeline">
+          <div class="section-head"><div><p class="eyebrow">День</p><h2>Таймлайн</h2></div><button class="soft-btn" data-tab-jump="log">Добавить</button></div>
+          <div id="timeline" class="timeline"></div>
+        </section>
+
+        <section class="panel widget" data-widget="insights">
+          <div class="section-head"><div><p class="eyebrow">Умно</p><h2>Подсказки</h2></div></div>
+          <div id="insights" class="insight-list"></div>
+        </section>
+
+        <section class="panel widget" data-widget="evening">
+          <div class="section-head"><div><p class="eyebrow">Apple Journal style</p><h2>Вечерний отчёт</h2></div><button id="closeDayBtn" class="primary-btn">Закрыть день</button></div>
+          <div id="eveningReport" class="journal-summary"></div>
+          <label class="field">Настроение
+            <select id="moodSelect" class="select"><option>🙂 Нормально</option><option>🔥 Отлично</option><option>😐 Так себе</option><option>😴 Устал</option><option>😤 Сложно</option></select>
+          </label>
+          <label class="field">Заметка дня<textarea id="dayNote" rows="4" maxlength="700" placeholder="Главная победа, что улучшить, что важно завтра"></textarea></label>
+        </section>
       </section>
 
-      <section id="goals" class="view">
-        <div class="grid two-columns">
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Цели</p><h3>Добавить цель</h3></div></div>
-            <form id="goalForm" class="form">
-              <label class="field">Название<input class="input" id="goalName" maxlength="80" required placeholder="Например: 100 часов работы"></label>
-              <div class="form-row">
-                <label class="field">Текущее<input class="input" type="number" id="goalCurrent" min="0" step="1" value="0"></label>
-                <label class="field">Цель<input class="input" type="number" id="goalTarget" min="1" step="1" value="10" required></label>
+      <section id="log" class="view">
+        <div class="grid two-col">
+          <section class="panel">
+            <div class="section-head"><div><p class="eyebrow">Запись</p><h2>Работа, спорт, саморазвитие или свой вариант</h2></div></div>
+            <form id="entryForm" class="form">
+              <label class="field">Дата<input id="entryDate" class="input" type="date" required></label>
+              <div class="form-grid two">
+                <label class="field">Начало<input id="entryStart" class="input" type="time" step="60" required></label>
+                <label class="field">Конец<input id="entryEnd" class="input" type="time" step="60" required></label>
               </div>
-              <label class="field">Единица<input class="input" id="goalUnit" maxlength="20" placeholder="часов, задач, дней"></label>
-              <button class="primary-btn full" type="submit">Создать цель</button>
+              <label class="field">Категория<select id="entryCategory" class="select" required></select></label>
+              <label class="field">Подтип / свой вариант<input id="entryTitle" class="input" maxlength="80" placeholder="Например: зал, книга, курс, проект, звонки"></label>
+              <div class="form-grid two">
+                <label class="field">Интенсивность<select id="entryIntensity" class="select"><option>—</option><option>лёгкая</option><option>средняя</option><option>высокая</option><option>жёсткая</option></select></label>
+                <label class="field">Ккал<input id="entryCalories" class="input" type="number" min="0" step="10" placeholder="необязательно"></label>
+              </div>
+              <label class="field">Заметка<textarea id="entryNote" rows="3" maxlength="400" placeholder="Коротко: что делал, как прошло"></textarea></label>
+              <button class="primary-btn full" type="submit">Добавить запись</button>
             </form>
-          </article>
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Прогресс</p><h3>Активные цели</h3></div></div>
-            <div id="goalsList" class="stack-list"></div>
-          </article>
-        </div>
-      </section>
-
-      <section id="habits" class="view">
-        <div class="grid two-columns">
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Повседневные таски</p><h3>Привычки на выбранный день</h3></div></div>
-            <div id="habitList" class="stack-list"></div>
-          </article>
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Новая привычка</p><h3>Добавить</h3></div></div>
-            <form id="habitForm" class="form">
-              <label class="field">Название<input class="input" id="habitName" maxlength="60" required placeholder="Например: сделать бэкап"></label>
-              <label class="field">Описание<input class="input" id="habitDesc" maxlength="120" placeholder="Необязательно"></label>
-              <button class="primary-btn full" type="submit">Добавить привычку</button>
-            </form>
-          </article>
-        </div>
-      </section>
-
-      <section id="focus" class="view">
-        <div class="grid two-columns">
-          <article class="panel card focus-card">
-            <div class="section-head"><div><p class="eyebrow">Pomodoro</p><h3>Фокус-таймер</h3></div></div>
-            <div class="timer" id="timerDisplay">25:00</div>
-            <div class="timer-settings">
-              <label>Фокус <input class="input small-input" id="focusMinutes" type="number" min="1" max="180" value="25"> мин</label>
-              <label>Перерыв <input class="input small-input" id="breakMinutes" type="number" min="1" max="60" value="5"> мин</label>
-            </div>
-            <div class="button-row center"><button class="primary-btn" id="timerStartBtn">Старт</button><button class="soft-btn" id="timerPauseBtn">Пауза</button><button class="soft-btn" id="timerResetBtn">Сброс</button></div>
-            <button class="soft-btn full" id="saveFocusBtn">Сохранить фокус-сессию в журнал</button>
-          </article>
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Фокус</p><h3>История и эффект</h3></div></div>
-            <div id="focusStats" class="metric-grid"></div>
-            <div id="focusHistory" class="feed compact-feed"></div>
-          </article>
+          </section>
+          <section class="panel">
+            <div class="section-head"><div><p class="eyebrow">История</p><h2>Записи выбранного дня</h2></div><button id="copyYesterdayBtn" class="soft-btn">Скопировать вчера</button></div>
+            <div id="dayEntries" class="feed"></div>
+          </section>
         </div>
       </section>
 
       <section id="sport" class="view">
-        <div class="grid two-columns">
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Спорт</p><h3>Добавить тренировку</h3></div></div>
-            <form id="sportForm" class="form">
-              <label class="field">Дата<input class="input" type="date" id="sportDate" required></label>
-              <div class="form-row">
-                <label class="field">Начало<input class="input" type="time" id="sportStart" step="60" value="18:00" required></label>
-                <label class="field">Конец<input class="input" type="time" id="sportEnd" step="60" value="19:00" required></label>
-              </div>
-              <label class="field">Активность
-                <select class="select" id="sportType" required></select>
-              </label>
-              <label class="field hidden" id="sportCustomWrap">Свой спорт<input class="input" id="sportCustomType" maxlength="60" placeholder="Например: баскетбол, бассейн, велосипед"></label>
-              <div class="form-row">
-                <label class="field">Интенсивность<select class="select" id="sportIntensity"><option>Лёгкая</option><option selected>Средняя</option><option>Высокая</option><option>Жёсткая</option></select></label>
-                <label class="field">Ккал, если знаешь<input class="input" type="number" id="sportCalories" min="0" step="10" placeholder="необязательно"></label>
-              </div>
-              <label class="field">Заметка<textarea id="sportNote" rows="3" maxlength="360" placeholder="Самочувствие, подходы, дистанция, результат"></textarea></label>
-              <button class="primary-btn full" type="submit">Сохранить спорт</button>
+        <section class="panel">
+          <div class="section-head"><div><p class="eyebrow">Спорт</p><h2>Дневник тренировок</h2></div><button class="soft-btn" data-template-kind="sport">Быстрая тренировка</button></div>
+          <div id="sportStats" class="metric-grid"></div>
+          <div id="sportHistory" class="feed cards"></div>
+        </section>
+      </section>
+
+      <section id="self" class="view">
+        <div class="grid two-col">
+          <section class="panel">
+            <div class="section-head"><div><p class="eyebrow">Саморазвитие</p><h2>Книги, курсы, проекты и практика</h2></div></div>
+            <form id="selfQuickForm" class="form">
+              <label class="field">Тип<select id="selfKind" class="select"><option>Проект</option><option>Книга</option><option>Курс</option><option>Практика</option><option>Конспект</option><option>Язык</option><option>Кодинг</option><option>Ableton</option><option>Свой вариант</option></select></label>
+              <label class="field">Название / свой вариант<input id="selfTitle" class="input" maxlength="80" placeholder="Например: LifeOS, книга, сербский"></label>
+              <div class="form-grid two"><label class="field">Минут<input id="selfMinutes" class="input" type="number" min="1" max="480" value="30"></label><label class="field">Прогресс, %<input id="selfProgress" class="input" type="number" min="0" max="100" placeholder="опц."></label></div>
+              <button class="primary-btn full" type="submit">Отметить саморазвитие</button>
             </form>
-          </article>
-
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Быстрый спорт</p><h3>Шаблоны</h3></div></div>
-            <div id="sportQuickGrid" class="quick-grid"></div>
-            <div class="divider"></div>
-            <form id="sportCustomForm" class="form compact-form">
-              <label class="field">Добавить свой спорт<input class="input" id="newSportType" maxlength="60" placeholder="Например: плавание"></label>
-              <button class="soft-btn full" type="submit">Добавить активность</button>
-            </form>
-          </article>
-
-          <article class="panel card span-2">
-            <div class="section-head"><div><p class="eyebrow">Спортивная аналитика</p><h3>Прогресс</h3></div></div>
-            <div id="sportStats" class="metric-grid wide"></div>
-            <div id="sportInsight" class="insight-list"></div>
-          </article>
-
-          <article class="panel card span-2">
-            <div class="section-head"><div><p class="eyebrow">История</p><h3>Тренировки и активность</h3></div></div>
-            <div id="sportHistory" class="feed"></div>
-          </article>
+          </section>
+          <section class="panel">
+            <div class="section-head"><div><p class="eyebrow">Прогресс</p><h2>Саморазвитие</h2></div></div>
+            <div id="selfStats" class="metric-grid"></div>
+            <div id="selfHistory" class="feed cards"></div>
+          </section>
         </div>
       </section>
 
-      <section id="selfdev" class="view">
-        <div class="grid two-columns">
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Саморазвитие</p><h3>Добавить сессию</h3></div></div>
-            <form id="selfForm" class="form">
-              <label class="field">Дата<input class="input" type="date" id="selfDate" required></label>
-              <div class="form-row">
-                <label class="field">Начало<input class="input" type="time" id="selfStart" step="60" value="20:00" required></label>
-                <label class="field">Конец<input class="input" type="time" id="selfEnd" step="60" value="21:00" required></label>
-              </div>
-              <label class="field">Направление
-                <select class="select" id="selfType" required></select>
-              </label>
-              <label class="field hidden" id="selfCustomWrap">Свой вариант<input class="input" id="selfCustomType" maxlength="60" placeholder="Например: английский, Ableton, финансы"></label>
-              <label class="field">Заметка<textarea id="selfNote" rows="3" maxlength="360" placeholder="Что изучал, что сделал, ссылка/глава/курс"></textarea></label>
-              <button class="primary-btn full" type="submit">Сохранить саморазвитие</button>
-            </form>
-          </article>
+      <section id="focus" class="view">
+        <section class="panel focus-panel">
+          <div class="section-head"><div><p class="eyebrow">Фокус</p><h2>Pomodoro / deep work</h2></div></div>
+          <div class="focus-clock" id="focusClock">25:00</div>
+          <div class="focus-modes" id="focusModes"></div>
+          <div class="form-grid two">
+            <label class="field">Категория<select id="focusCategory" class="select"></select></label>
+            <label class="field">Название<input id="focusTitle" class="input" maxlength="80" placeholder="LifeOS, книга, курс"></label>
+          </div>
+          <div class="button-row center"><button id="focusStart" class="primary-btn">Старт</button><button id="focusPause" class="soft-btn">Пауза</button><button id="focusStop" class="soft-btn">Завершить и записать</button></div>
+        </section>
+      </section>
 
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Быстрый старт</p><h3>Проекты, книги, курсы</h3></div></div>
-            <div id="selfQuickGrid" class="quick-grid"></div>
-            <div class="divider"></div>
-            <form id="selfCustomForm" class="form compact-form">
-              <label class="field">Добавить свой вариант<input class="input" id="newSelfType" maxlength="60" placeholder="Например: сербский, дизайн, Ableton"></label>
-              <button class="soft-btn full" type="submit">Добавить вариант</button>
-            </form>
-          </article>
+      <section id="history" class="view">
+        <section class="panel">
+          <div class="section-head"><div><p class="eyebrow">Apple Journal style</p><h2>История дней</h2></div><button id="exportHtmlBtn" class="soft-btn">HTML-отчёт</button></div>
+          <div id="historyCards" class="history-list"></div>
+        </section>
+      </section>
 
-          <article class="panel card span-2">
-            <div class="section-head"><div><p class="eyebrow">Прогресс</p><h3>Саморазвитие</h3></div></div>
-            <div id="selfStats" class="metric-grid wide"></div>
-            <div id="selfInsight" class="insight-list"></div>
-          </article>
-
-          <article class="panel card span-2">
-            <div class="section-head"><div><p class="eyebrow">История</p><h3>Сессии саморазвития</h3></div></div>
-            <div id="selfHistory" class="feed"></div>
-          </article>
+      <section id="analytics" class="view">
+        <div class="grid two-col">
+          <section class="panel">
+            <div class="section-head"><div><p class="eyebrow">Аналитика</p><h2>Что съедает время</h2></div></div>
+            <div id="composition" class="composition"></div>
+          </section>
+          <section class="panel">
+            <div class="section-head"><div><p class="eyebrow">Период</p><h2>План, факт, прогноз</h2></div></div>
+            <div id="periodStats" class="metric-grid"></div>
+            <div id="periodInsights" class="insight-list"></div>
+          </section>
         </div>
       </section>
 
-      <section id="money" class="view">
-        <div class="grid two-columns">
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Финансы</p><h3>Настройки расчёта</h3></div></div>
-            <form id="financeForm" class="form">
-              <label class="field">Ставка за час, ₽<input class="input" type="number" id="hourRate" min="0" step="10"></label>
-              <label class="field">Бонус за полный рабочий день, ₽<input class="input" type="number" id="fullDayBonus" min="0" step="10"></label>
-              <label class="field">Штраф/потеря за пропущенный час, ₽<input class="input" type="number" id="missPenalty" min="0" step="10"></label>
-              <label class="field">Денежная цель к 31 августа, ₽<input class="input" type="number" id="moneyTarget" min="0" step="1000"></label>
-              <button class="primary-btn full" type="submit">Сохранить финансы</button>
-            </form>
-          </article>
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Прогноз</p><h3>Заработок и потери</h3></div></div>
-            <div id="moneyStats" class="metric-grid"></div>
-            <div id="moneyInsight" class="insight-list"></div>
-          </article>
+      <section id="goals" class="view">
+        <div class="grid two-col">
+          <section class="panel">
+            <div class="section-head"><div><p class="eyebrow">Цели</p><h2>Добавить цель</h2></div></div>
+            <form id="goalForm" class="form"><label class="field">Название<input id="goalName" class="input" required maxlength="80"></label><div class="form-grid two"><label class="field">Текущее<input id="goalCurrent" class="input" type="number" min="0" value="0"></label><label class="field">Цель<input id="goalTarget" class="input" type="number" min="1" value="10"></label></div><label class="field">Единица<input id="goalUnit" class="input" maxlength="20" placeholder="часов, книг, задач"></label><button class="primary-btn full" type="submit">Добавить</button></form>
+          </section>
+          <section class="panel"><div class="section-head"><div><p class="eyebrow">Активные</p><h2>Цели</h2></div></div><div id="goalsList" class="stack-list"></div></section>
         </div>
       </section>
 
       <section id="projects" class="view">
-        <div class="grid two-columns">
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">GitHub Pages</p><h3>Добавить проект</h3></div></div>
-            <form id="projectForm" class="form">
-              <label class="field">Название<input class="input" id="projectName" maxlength="80" required placeholder="Например: LifeOS"></label>
-              <div class="form-row">
-                <label class="field">Статус<select class="select" id="projectStatus"><option>Идея</option><option>В работе</option><option>Тест</option><option>Готово</option><option>Пауза</option></select></label>
-                <label class="field">Прогресс, %<input class="input" type="number" id="projectProgress" min="0" max="100" value="0"></label>
-              </div>
-              <label class="field">Дедлайн<input class="input" type="date" id="projectDeadline"></label>
-              <label class="field">GitHub / repo<input class="input" type="url" id="projectRepo" placeholder="https://github.com/..."></label>
-              <label class="field">GitHub Pages / live<input class="input" type="url" id="projectLive" placeholder="https://...github.io/..."></label>
-              <label class="field">Заметки<textarea id="projectNotes" rows="3" maxlength="300"></textarea></label>
-              <button class="primary-btn full" type="submit">Добавить проект</button>
-            </form>
-          </article>
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Панель проектов</p><h3>Активные</h3></div></div>
-            <div id="projectList" class="stack-list"></div>
-          </article>
-        </div>
-      </section>
-
-      <section id="reports" class="view">
-        <div class="grid two-columns">
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Итоговый отчёт</p><h3 id="reportPeriodTitle">Период LifeOS</h3></div></div>
-            <div class="button-row stretch"><button class="primary-btn" id="generateReportBtn">Сформировать отчёт</button><button class="soft-btn" id="downloadReportBtn">Скачать HTML</button></div>
-            <div class="divider"></div>
-            <div id="reportPreview" class="report-preview"></div>
-          </article>
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Данные</p><h3>Бэкап и перенос</h3></div></div>
-            <div class="button-grid">
-              <button class="soft-btn" id="exportJsonBtn">Экспорт JSON</button>
-              <button class="soft-btn" id="exportFullCsvBtn">Экспорт CSV</button>
-              <button class="soft-btn" id="downloadTemplateBtn">Пустой шаблон</button>
-            </div>
-            <label class="field import-field">Импорт JSON<input class="input" type="file" id="importJsonInput" accept="application/json,.json"></label>
-          </article>
+        <div class="grid two-col">
+          <section class="panel">
+            <div class="section-head"><div><p class="eyebrow">GitHub Pages</p><h2>Проект</h2></div></div>
+            <form id="projectForm" class="form"><label class="field">Название<input id="projectName" class="input" required maxlength="80"></label><div class="form-grid two"><label class="field">Статус<select id="projectStatus" class="select"><option>Идея</option><option>В работе</option><option>Тест</option><option>Готово</option><option>Пауза</option></select></label><label class="field">Прогресс %<input id="projectProgress" class="input" type="number" min="0" max="100" value="0"></label></div><label class="field">Ссылка<input id="projectUrl" class="input" type="url" placeholder="https://..."></label><label class="field">Заметка<textarea id="projectNote" rows="3"></textarea></label><button class="primary-btn full" type="submit">Сохранить проект</button></form>
+          </section>
+          <section class="panel"><div class="section-head"><div><p class="eyebrow">Портфель</p><h2>Проекты</h2></div></div><div id="projectsList" class="stack-list"></div></section>
         </div>
       </section>
 
       <section id="achievements" class="view">
-        <div class="grid two-columns">
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Прокачка</p><h3>Уровень и XP</h3></div></div>
-            <div id="xpBox" class="xp-box"></div>
-          </article>
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Ачивки</p><h3>Достижения</h3></div></div>
-            <div id="achievementList" class="stack-list"></div>
-          </article>
-        </div>
+        <section class="panel"><div class="section-head"><div><p class="eyebrow">Бесконечно</p><h2>Ачивки и бейджи</h2></div><span id="levelPill" class="pill">Lv.1</span></div><div id="xpBox" class="xp-box"></div><div id="achievementsList" class="badges-grid"></div></section>
       </section>
 
       <section id="settings" class="view">
-        <div class="grid two-columns">
-
-          <article class="panel card span-2">
-            <div class="section-head"><div><p class="eyebrow">Первичная настройка</p><h3>График работы и спорт</h3></div></div>
-            <form id="configForm" class="form setup-form">
-              <div class="form-row">
-                <label class="field">Начало периода<input class="input" type="date" id="configStartDate" required></label>
-                <label class="field">Конец периода<input class="input" type="date" id="configEndDate" required></label>
-              </div>
-              <label class="field">Желаемых тренировок в неделю<input class="input" type="number" id="configWorkoutTarget" min="0" max="14" step="1" required></label>
-              <div id="settingsScheduleGrid" class="schedule-grid"></div>
-              <div class="button-row stretch">
-                <button class="soft-btn" type="button" id="configDefaultBtn">Стандартный график</button>
-                <button class="primary-btn" type="submit">Сохранить график</button>
-              </div>
-              <p class="muted small">Изменение графика пересчитывает план/факт, календарь, финансы, отчёты и ачивки. Старые записи не удаляются.</p>
+        <div class="grid two-col">
+          <section class="panel span-2">
+            <div class="section-head"><div><p class="eyebrow">График</p><h2>Рабочий период и цели</h2></div></div>
+            <form id="configForm" class="form">
+              <div class="form-grid two"><label class="field">Начало<input id="configStart" class="input" type="date" required></label><label class="field">Конец<input id="configEnd" class="input" type="date" required></label></div>
+              <div class="form-grid two"><label class="field">Тренировок в неделю<input id="configSportTarget" class="input" type="number" min="0" max="14" step="1"></label><label class="field">Саморазвитие в день, мин<input id="configSelfTarget" class="input" type="number" min="0" max="480" step="5"></label></div>
+              <div id="configSchedule" class="schedule-list"></div>
+              <div class="button-row"><button id="configDefault" type="button" class="soft-btn">Стандарт</button><button class="primary-btn" type="submit">Сохранить график</button></div>
             </form>
-          </article>
+          </section>
 
-          <article class="panel card span-2">
-            <div class="section-head"><div><p class="eyebrow">Визуальный стиль</p><h3>Liquid Glass, темы и анимации</h3></div></div>
-            <form id="designForm" class="form setup-form">
-              <div class="form-row">
-                <label class="field">Тема
-                  <select id="settingsThemeSelect" class="select">
-                    <option value="system">Системная</option>
-                    <option value="light">iOS Light</option>
-                    <option value="dark">iOS Dark</option>
-                    <option value="midnight">Midnight</option>
-                    <option value="aurora">Aurora</option>
-                    <option value="fitness">Apple Fitness</option>
-                    <option value="music">Apple Music</option>
-                    <option value="journal">Apple Journal</option>
-                    <option value="ios7">iOS 7 Frost</option>
-                    <option value="ios13">iOS 13</option>
-                    <option value="ios17">iOS 17 Pro</option>
-                    <option value="ios18">iOS 18 Liquid</option>
-                    <option value="aqua">Classic Aqua</option>
-                    <option value="graphite">Graphite</option>
-                    <option value="ipod">iPod</option>
-                    <option value="snitch">Стукач</option>
-                  </select>
-                </label>
-                <label class="field">Цель саморазвития в день, мин<input class="input" id="selfTargetMinutes" type="number" min="0" max="480" step="5" value="60"></label>
-              </div>
-              <div class="range-grid">
-                <label class="field range-field">Сила Liquid Glass <input type="range" id="glassOpacity" min="35" max="92" value="68"><span id="glassOpacityValue">68%</span></label>
-                <label class="field range-field">Размытие стекла <input type="range" id="glassBlur" min="6" max="34" value="20"><span id="glassBlurValue">20px</span></label>
-                <label class="field range-field">Анимации <select id="animationLevel" class="select"><option value="low">Минимальные</option><option value="normal">Обычные</option><option value="high">Живые</option></select></label>
-              </div>
-              <div class="theme-list" id="themeList"></div>
+          <section class="panel span-2">
+            <div class="section-head"><div><p class="eyebrow">Визуал</p><h2>Liquid Glass, анимации и темы</h2></div></div>
+            <form id="visualForm" class="form">
+              <div class="form-grid three"><label class="field">Тема<select id="themeSelect" class="select"></select></label><label class="field">Liquid Glass<input id="glassOpacity" type="range" min="35" max="92" value="68"></label><label class="field">Размытие<input id="glassBlur" type="range" min="6" max="36" value="20"></label></div>
+              <label class="field">Анимации<select id="animationLevel" class="select"><option value="low">Минимум</option><option value="normal">Стандарт</option><option value="high">Максимум</option></select></label>
+              <div id="themeList" class="theme-list"></div>
               <button class="primary-btn full" type="submit">Сохранить визуал</button>
             </form>
-          </article>
+          </section>
 
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">PWA</p><h3>Установка на устройство</h3></div></div>
-            <div class="install-steps">
-              <h4>iPhone / iPad</h4>
-              <p>Открой сайт в Safari → Поделиться → «На экран Домой» → Добавить.</p>
-              <h4>Windows / macOS</h4>
-              <p>Открой сайт в Chrome или Edge → значок установки в адресной строке → Установить.</p>
-            </div>
-            <button class="soft-btn full" id="enableNotificationsBtn">Включить локальные уведомления</button>
-          </article>
-          <article class="panel card">
-            <div class="section-head"><div><p class="eyebrow">Свои варианты</p><h3>Категории времени</h3></div></div>
-            <form id="customTypeForm" class="form compact-form">
-              <label class="field">Название<input class="input" id="newCustomType" maxlength="60" placeholder="Например: документы, встреча, магазин"></label>
-              <button class="soft-btn full" type="submit">Добавить вариант</button>
-            </form>
-            <div id="customTypeList" class="chip-list"></div>
-          </article>
+          <section class="panel">
+            <div class="section-head"><div><p class="eyebrow">Категории</p><h2>Свой вариант</h2></div></div>
+            <form id="categoryForm" class="form"><label class="field">Название<input id="catName" class="input" maxlength="40" required placeholder="Сербский, Ableton, прогулки"></label><div class="form-grid two"><label class="field">Тип<select id="catType" class="select"><option value="work">Работа</option><option value="sport">Спорт</option><option value="self">Саморазвитие</option><option value="custom">Другое</option></select></label><label class="field">Иконка<input id="catIcon" class="input" maxlength="4" placeholder="📚"></label></div><div class="form-grid two"><label class="field">Цвет<input id="catColor" class="input" type="color" value="#7c5cff"></label><label class="field">Дневная цель, мин/шт<input id="catDaily" class="input" type="number" min="0" step="5" value="30"></label></div><button class="primary-btn full" type="submit">Создать категорию</button></form>
+            <div id="categoryList" class="chip-list"></div>
+          </section>
 
-          <article class="panel card danger-zone">
-            <div class="section-head"><div><p class="eyebrow">Обслуживание</p><h3>Сброс и сервис</h3></div></div>
-            <button class="soft-btn full" id="clearCacheBtn">Очистить кэш PWA</button>
-            <button class="danger-btn full" id="resetDataBtn">Сбросить все данные</button>
-            <p class="muted small">Перед сбросом лучше сделать экспорт JSON.</p>
-          </article>
+          <section class="panel">
+            <div class="section-head"><div><p class="eyebrow">Кольца</p><h2>Настраиваемые кольца</h2></div></div>
+            <form id="ringsForm" class="form"><label class="field">Внешнее кольцо<select id="ring0" class="select"></select></label><label class="field">Среднее кольцо<select id="ring1" class="select"></select></label><label class="field">Внутреннее кольцо<select id="ring2" class="select"></select></label><button class="primary-btn full" type="submit">Сохранить кольца</button></form>
+          </section>
+
+          <section class="panel span-2">
+            <div class="section-head"><div><p class="eyebrow">Главный экран</p><h2>Виджеты</h2></div></div>
+            <div id="widgetSettings" class="widget-settings"></div>
+          </section>
+
+          <section class="panel">
+            <div class="section-head"><div><p class="eyebrow">Шаблоны</p><h2>Быстрое действие</h2></div></div>
+            <form id="templateForm" class="form"><label class="field">Название<input id="tplName" class="input" maxlength="40" required placeholder="Сербский 30 мин"></label><label class="field">Категория<select id="tplCategory" class="select"></select></label><label class="field">Минут<input id="tplMinutes" class="input" type="number" min="1" max="480" value="30"></label><button class="primary-btn full" type="submit">Добавить шаблон</button></form>
+            <div id="templateList" class="chip-list"></div>
+          </section>
+
+          <section class="panel">
+            <div class="section-head"><div><p class="eyebrow">PWA</p><h2>iPhone / кэш / данные</h2></div></div>
+            <div class="install-steps"><p><strong>iPhone:</strong> Safari → Поделиться → На экран «Домой». Интерфейс учитывает челку, Dynamic Island и нижний home indicator.</p><p><strong>Кэш:</strong> если Pages держит старую версию, сбрось кэш интерфейса без удаления данных.</p></div>
+            <div class="button-grid"><button id="exportJson" class="soft-btn">Экспорт JSON</button><button id="importJsonLabel" class="soft-btn">Импорт JSON</button><button id="clearCache" class="soft-btn">Сбросить кэш PWA</button><button id="resetAll" class="danger-btn">Сбросить всё</button></div>
+            <input id="importJson" type="file" accept="application/json,.json" hidden>
+          </section>
         </div>
       </section>
     </main>
-  </div>
 
-  <div id="toast" class="toast" hidden></div>
+    <nav class="bottom-nav" aria-label="Основная навигация">
+      <button class="nav-btn active" data-tab="dashboard">Сегодня</button>
+      <button class="nav-btn" data-tab="log">Запись</button>
+      <button class="nav-btn" data-tab="sport">Спорт</button>
+      <button class="nav-btn" data-tab="self">Развитие</button>
+      <button class="nav-btn" data-tab="focus">Фокус</button>
+      <button class="nav-btn" data-tab="history">История</button>
+      <button class="nav-btn" data-tab="analytics">Аналитика</button>
+      <button class="nav-btn" data-tab="settings">Настройки</button>
+    </nav>
+  </div>
   <script src="./app.js"></script>
 </body>
 </html>

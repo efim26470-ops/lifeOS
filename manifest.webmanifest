@@ -1,91 +1,20 @@
 {
-  "name": "LifeOS — Rings, Work, Sport & Growth",
+  "name": "LifeOS v9",
   "short_name": "LifeOS",
-  "description": "Локальная PWA-панель в стиле Apple Fitness/Music/Journal: график работы, кольца целей, спорт, саморазвитие, отчёты и бесконечные ачивки.",
+  "description": "Локальная PWA-панель дня: работа, спорт, саморазвитие, кольца, журнал, отчёты и цели.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "display_override": [
-    "window-controls-overlay",
-    "standalone",
-    "browser"
-  ],
-  "background_color": "#020617",
-  "theme_color": "#0a84ff",
-  "orientation": "portrait",
-  "lang": "ru",
-  "categories": [
-    "productivity",
-    "health",
-    "fitness",
-    "utilities"
-  ],
+  "orientation": "portrait-primary",
+  "background_color": "#071020",
+  "theme_color": "#0b1020",
+  "categories": ["productivity", "health", "lifestyle"],
   "icons": [
-    {
-      "src": "./icons/favicon-16.png",
-      "sizes": "16x16",
-      "type": "image/png"
-    },
-    {
-      "src": "./icons/favicon-32.png",
-      "sizes": "32x32",
-      "type": "image/png"
-    },
-    {
-      "src": "./icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "./icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "./icons/maskable-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "./icons/apple-touch-icon.png",
-      "sizes": "180x180",
-      "type": "image/png",
-      "purpose": "any"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "День",
-      "short_name": "День",
-      "url": "./index.html#day",
-      "description": "Быстро добавить запись времени"
-    },
-    {
-      "name": "Фокус",
-      "short_name": "Фокус",
-      "url": "./index.html#focus",
-      "description": "Открыть Pomodoro"
-    },
-    {
-      "name": "Спорт",
-      "short_name": "Спорт",
-      "url": "./index.html#sport",
-      "description": "Добавить тренировку или прогулку"
-    },
-    {
-      "name": "Саморазвитие",
-      "short_name": "Рост",
-      "url": "./index.html#selfdev",
-      "description": "Добавить проект, книгу, курс или свой вариант"
-    },
-    {
-      "name": "Отчёт",
-      "short_name": "Отчёт",
-      "url": "./index.html#reports",
-      "description": "Сформировать отчёт"
-    }
+    {"src":"./icons/favicon-16.png","sizes":"16x16","type":"image/png"},
+    {"src":"./icons/favicon-32.png","sizes":"32x32","type":"image/png"},
+    {"src":"./icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
+    {"src":"./icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any"},
+    {"src":"./icons/maskable-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"},
+    {"src":"./icons/apple-touch-icon.png","sizes":"180x180","type":"image/png"}
   ]
 }
