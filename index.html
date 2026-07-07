@@ -1,302 +1,163 @@
-<!doctype html>
-<html lang="ru">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b1020">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="LifeOS">
-  <meta name="description" content="LifeOS — локальная PWA-панель дня: работа, спорт, саморазвитие, кольца, журнал, отчёты и цели.">
-  <title>LifeOS v9</title>
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
-  <link rel="stylesheet" href="./styles.css">
-</head>
-<body>
-  <div class="orb orb-a"></div><div class="orb orb-b"></div><div class="orb orb-c"></div>
-
-  <section id="onboarding" class="onboarding hidden" aria-label="Первичная настройка LifeOS">
-    <div class="panel setup-card">
-      <div class="app-badge"><img src="./icons/icon-192.png" alt=""><span>LifeOS v9</span></div>
-      <p class="eyebrow">Первый запуск</p>
-      <h1>Настрой LifeOS под свой ритм</h1>
-      <p class="muted">Выбери рабочий период, график по дням, цель тренировок и саморазвития. Всё можно поменять позже в настройках.</p>
-      <form id="setupForm" class="form">
-        <div class="form-grid two">
-          <label class="field">Начало периода<input id="setupStart" class="input" type="date" required></label>
-          <label class="field">Конец периода<input id="setupEnd" class="input" type="date" required></label>
-        </div>
-        <div class="form-grid two">
-          <label class="field">Тренировок в неделю<input id="setupSportTarget" class="input" type="number" min="0" max="14" step="1" required></label>
-          <label class="field">Саморазвитие в день, мин<input id="setupSelfTarget" class="input" type="number" min="0" max="480" step="5" required></label>
-        </div>
-        <div class="subpanel">
-          <div class="section-head tight"><div><p class="eyebrow">График</p><h2>Рабочие дни и часы</h2></div></div>
-          <div id="setupSchedule" class="schedule-list"></div>
-        </div>
-        <div class="button-row sticky-actions">
-          <button class="soft-btn" type="button" id="setupDefault">Стандарт</button>
-          <button class="primary-btn" type="submit">Запустить LifeOS</button>
-        </div>
-      </form>
-    </div>
-  </section>
-
-  <div id="toast" class="toast" role="status"></div>
-
-  <div class="app-shell">
-    <header class="topbar panel">
-      <div class="brand">
-        <img class="brand-icon" src="./icons/icon-192.png" alt="LifeOS">
-        <div><p class="eyebrow">offline pwa · github pages</p><h1>LifeOS</h1></div>
-      </div>
-      <div class="top-actions">
-        <button id="installBtn" class="soft-btn compact" hidden>Установить</button>
-        <button id="backupTopBtn" class="soft-btn compact">Бэкап</button>
-        <select id="themeTop" class="select compact-select" aria-label="Тема"></select>
-      </div>
-    </header>
-
-    <main class="main">
-      <section id="dashboard" class="view active">
-        <div class="hero panel widget" data-widget="hero">
-          <div>
-            <p class="eyebrow">Сегодня</p>
-            <h2 id="todayTitle">Сегодня</h2>
-            <p id="todaySubtitle" class="muted">Работа · спорт · саморазвитие</p>
-          </div>
-          <input id="activeDate" class="input date-input" type="date">
-        </div>
-
-        <section class="panel rings-card widget" data-widget="rings">
-          <div class="section-head"><div><p class="eyebrow">Apple Fitness style</p><h2>Кольца выполнения</h2></div><button class="soft-btn" data-tab-jump="settings">Настроить</button></div>
-          <div class="rings-stage">
-            <div id="tripleRings" class="triple-rings"><div class="rings-center"><strong id="ringsAverage">0%</strong><span>день</span></div></div>
-            <div id="ringsList" class="rings-list"></div>
-          </div>
-          <div class="quick-actions">
-            <button id="completeWorkBtn" class="primary-btn">Работа</button>
-            <button id="completeSportBtn" class="soft-btn">Спорт</button>
-            <button id="completeSelfBtn" class="soft-btn">Саморазвитие</button>
-            <button class="soft-btn" data-tab-jump="log">Свой вариант</button>
-          </div>
-        </section>
-
-        <section class="panel widget" data-widget="weekly">
-          <div class="section-head"><div><p class="eyebrow">Неделя</p><h2>Недельные кольца</h2></div><span id="weekLabel" class="pill">—</span></div>
-          <div id="weeklyRings" class="weekly-grid"></div>
-        </section>
-
-        <section class="panel widget" data-widget="planner">
-          <div class="section-head"><div><p class="eyebrow">Планировщик</p><h2>План дня</h2></div><button id="acceptPlanBtn" class="soft-btn">Принять план</button></div>
-          <div id="smartPlan" class="plan-list"></div>
-        </section>
-
-        <section class="panel widget" data-widget="quick">
-          <div class="section-head"><div><p class="eyebrow">Быстро</p><h2>Шаблоны</h2></div><button class="soft-btn" data-tab-jump="settings">Добавить</button></div>
-          <div id="quickTemplates" class="quick-grid"></div>
-        </section>
-
-        <section class="panel widget" data-widget="timeline">
-          <div class="section-head"><div><p class="eyebrow">День</p><h2>Таймлайн</h2></div><button class="soft-btn" data-tab-jump="log">Добавить</button></div>
-          <div id="timeline" class="timeline"></div>
-        </section>
-
-        <section class="panel widget" data-widget="insights">
-          <div class="section-head"><div><p class="eyebrow">Умно</p><h2>Подсказки</h2></div></div>
-          <div id="insights" class="insight-list"></div>
-        </section>
-
-        <section class="panel widget" data-widget="evening">
-          <div class="section-head"><div><p class="eyebrow">Apple Journal style</p><h2>Вечерний отчёт</h2></div><button id="closeDayBtn" class="primary-btn">Закрыть день</button></div>
-          <div id="eveningReport" class="journal-summary"></div>
-          <label class="field">Настроение
-            <select id="moodSelect" class="select"><option>🙂 Нормально</option><option>🔥 Отлично</option><option>😐 Так себе</option><option>😴 Устал</option><option>😤 Сложно</option></select>
-          </label>
-          <label class="field">Заметка дня<textarea id="dayNote" rows="4" maxlength="700" placeholder="Главная победа, что улучшить, что важно завтра"></textarea></label>
-        </section>
-      </section>
-
-      <section id="log" class="view">
-        <div class="grid two-col">
-          <section class="panel">
-            <div class="section-head"><div><p class="eyebrow">Запись</p><h2>Работа, спорт, саморазвитие или свой вариант</h2></div></div>
-            <form id="entryForm" class="form">
-              <label class="field">Дата<input id="entryDate" class="input" type="date" required></label>
-              <div class="form-grid two">
-                <label class="field">Начало<input id="entryStart" class="input" type="time" step="60" required></label>
-                <label class="field">Конец<input id="entryEnd" class="input" type="time" step="60" required></label>
-              </div>
-              <label class="field">Категория<select id="entryCategory" class="select" required></select></label>
-              <label class="field">Подтип / свой вариант<input id="entryTitle" class="input" maxlength="80" placeholder="Например: зал, книга, курс, проект, звонки"></label>
-              <div class="form-grid two">
-                <label class="field">Интенсивность<select id="entryIntensity" class="select"><option>—</option><option>лёгкая</option><option>средняя</option><option>высокая</option><option>жёсткая</option></select></label>
-                <label class="field">Ккал<input id="entryCalories" class="input" type="number" min="0" step="10" placeholder="необязательно"></label>
-              </div>
-              <label class="field">Заметка<textarea id="entryNote" rows="3" maxlength="400" placeholder="Коротко: что делал, как прошло"></textarea></label>
-              <button class="primary-btn full" type="submit">Добавить запись</button>
-            </form>
-          </section>
-          <section class="panel">
-            <div class="section-head"><div><p class="eyebrow">История</p><h2>Записи выбранного дня</h2></div><button id="copyYesterdayBtn" class="soft-btn">Скопировать вчера</button></div>
-            <div id="dayEntries" class="feed"></div>
-          </section>
-        </div>
-      </section>
-
-      <section id="sport" class="view">
-        <section class="panel">
-          <div class="section-head"><div><p class="eyebrow">Спорт</p><h2>Дневник тренировок</h2></div><button class="soft-btn" data-template-kind="sport">Быстрая тренировка</button></div>
-          <div id="sportStats" class="metric-grid"></div>
-          <div id="sportHistory" class="feed cards"></div>
-        </section>
-      </section>
-
-      <section id="self" class="view">
-        <div class="grid two-col">
-          <section class="panel">
-            <div class="section-head"><div><p class="eyebrow">Саморазвитие</p><h2>Книги, курсы, проекты и практика</h2></div></div>
-            <form id="selfQuickForm" class="form">
-              <label class="field">Тип<select id="selfKind" class="select"><option>Проект</option><option>Книга</option><option>Курс</option><option>Практика</option><option>Конспект</option><option>Язык</option><option>Кодинг</option><option>Ableton</option><option>Свой вариант</option></select></label>
-              <label class="field">Название / свой вариант<input id="selfTitle" class="input" maxlength="80" placeholder="Например: LifeOS, книга, сербский"></label>
-              <div class="form-grid two"><label class="field">Минут<input id="selfMinutes" class="input" type="number" min="1" max="480" value="30"></label><label class="field">Прогресс, %<input id="selfProgress" class="input" type="number" min="0" max="100" placeholder="опц."></label></div>
-              <button class="primary-btn full" type="submit">Отметить саморазвитие</button>
-            </form>
-          </section>
-          <section class="panel">
-            <div class="section-head"><div><p class="eyebrow">Прогресс</p><h2>Саморазвитие</h2></div></div>
-            <div id="selfStats" class="metric-grid"></div>
-            <div id="selfHistory" class="feed cards"></div>
-          </section>
-        </div>
-      </section>
-
-      <section id="focus" class="view">
-        <section class="panel focus-panel">
-          <div class="section-head"><div><p class="eyebrow">Фокус</p><h2>Pomodoro / deep work</h2></div></div>
-          <div class="focus-clock" id="focusClock">25:00</div>
-          <div class="focus-modes" id="focusModes"></div>
-          <div class="form-grid two">
-            <label class="field">Категория<select id="focusCategory" class="select"></select></label>
-            <label class="field">Название<input id="focusTitle" class="input" maxlength="80" placeholder="LifeOS, книга, курс"></label>
-          </div>
-          <div class="button-row center"><button id="focusStart" class="primary-btn">Старт</button><button id="focusPause" class="soft-btn">Пауза</button><button id="focusStop" class="soft-btn">Завершить и записать</button></div>
-        </section>
-      </section>
-
-      <section id="history" class="view">
-        <section class="panel">
-          <div class="section-head"><div><p class="eyebrow">Apple Journal style</p><h2>История дней</h2></div><button id="exportHtmlBtn" class="soft-btn">HTML-отчёт</button></div>
-          <div id="historyCards" class="history-list"></div>
-        </section>
-      </section>
-
-      <section id="analytics" class="view">
-        <div class="grid two-col">
-          <section class="panel">
-            <div class="section-head"><div><p class="eyebrow">Аналитика</p><h2>Что съедает время</h2></div></div>
-            <div id="composition" class="composition"></div>
-          </section>
-          <section class="panel">
-            <div class="section-head"><div><p class="eyebrow">Период</p><h2>План, факт, прогноз</h2></div></div>
-            <div id="periodStats" class="metric-grid"></div>
-            <div id="periodInsights" class="insight-list"></div>
-          </section>
-        </div>
-      </section>
-
-      <section id="goals" class="view">
-        <div class="grid two-col">
-          <section class="panel">
-            <div class="section-head"><div><p class="eyebrow">Цели</p><h2>Добавить цель</h2></div></div>
-            <form id="goalForm" class="form"><label class="field">Название<input id="goalName" class="input" required maxlength="80"></label><div class="form-grid two"><label class="field">Текущее<input id="goalCurrent" class="input" type="number" min="0" value="0"></label><label class="field">Цель<input id="goalTarget" class="input" type="number" min="1" value="10"></label></div><label class="field">Единица<input id="goalUnit" class="input" maxlength="20" placeholder="часов, книг, задач"></label><button class="primary-btn full" type="submit">Добавить</button></form>
-          </section>
-          <section class="panel"><div class="section-head"><div><p class="eyebrow">Активные</p><h2>Цели</h2></div></div><div id="goalsList" class="stack-list"></div></section>
-        </div>
-      </section>
-
-      <section id="projects" class="view">
-        <div class="grid two-col">
-          <section class="panel">
-            <div class="section-head"><div><p class="eyebrow">GitHub Pages</p><h2>Проект</h2></div></div>
-            <form id="projectForm" class="form"><label class="field">Название<input id="projectName" class="input" required maxlength="80"></label><div class="form-grid two"><label class="field">Статус<select id="projectStatus" class="select"><option>Идея</option><option>В работе</option><option>Тест</option><option>Готово</option><option>Пауза</option></select></label><label class="field">Прогресс %<input id="projectProgress" class="input" type="number" min="0" max="100" value="0"></label></div><label class="field">Ссылка<input id="projectUrl" class="input" type="url" placeholder="https://..."></label><label class="field">Заметка<textarea id="projectNote" rows="3"></textarea></label><button class="primary-btn full" type="submit">Сохранить проект</button></form>
-          </section>
-          <section class="panel"><div class="section-head"><div><p class="eyebrow">Портфель</p><h2>Проекты</h2></div></div><div id="projectsList" class="stack-list"></div></section>
-        </div>
-      </section>
-
-      <section id="achievements" class="view">
-        <section class="panel"><div class="section-head"><div><p class="eyebrow">Бесконечно</p><h2>Ачивки и бейджи</h2></div><span id="levelPill" class="pill">Lv.1</span></div><div id="xpBox" class="xp-box"></div><div id="achievementsList" class="badges-grid"></div></section>
-      </section>
-
-      <section id="settings" class="view">
-        <div class="grid two-col">
-          <section class="panel span-2">
-            <div class="section-head"><div><p class="eyebrow">График</p><h2>Рабочий период и цели</h2></div></div>
-            <form id="configForm" class="form">
-              <div class="form-grid two"><label class="field">Начало<input id="configStart" class="input" type="date" required></label><label class="field">Конец<input id="configEnd" class="input" type="date" required></label></div>
-              <div class="form-grid two"><label class="field">Тренировок в неделю<input id="configSportTarget" class="input" type="number" min="0" max="14" step="1"></label><label class="field">Саморазвитие в день, мин<input id="configSelfTarget" class="input" type="number" min="0" max="480" step="5"></label></div>
-              <div id="configSchedule" class="schedule-list"></div>
-              <div class="button-row"><button id="configDefault" type="button" class="soft-btn">Стандарт</button><button class="primary-btn" type="submit">Сохранить график</button></div>
-            </form>
-          </section>
-
-          <section class="panel span-2">
-            <div class="section-head"><div><p class="eyebrow">Визуал</p><h2>Liquid Glass, анимации и темы</h2></div></div>
-            <form id="visualForm" class="form">
-              <div class="form-grid three"><label class="field">Тема<select id="themeSelect" class="select"></select></label><label class="field">Liquid Glass<input id="glassOpacity" type="range" min="35" max="92" value="68"></label><label class="field">Размытие<input id="glassBlur" type="range" min="6" max="36" value="20"></label></div>
-              <label class="field">Анимации<select id="animationLevel" class="select"><option value="low">Минимум</option><option value="normal">Стандарт</option><option value="high">Максимум</option></select></label>
-              <div id="themeList" class="theme-list"></div>
-              <button class="primary-btn full" type="submit">Сохранить визуал</button>
-            </form>
-          </section>
-
-          <section class="panel">
-            <div class="section-head"><div><p class="eyebrow">Категории</p><h2>Свой вариант</h2></div></div>
-            <form id="categoryForm" class="form"><label class="field">Название<input id="catName" class="input" maxlength="40" required placeholder="Сербский, Ableton, прогулки"></label><div class="form-grid two"><label class="field">Тип<select id="catType" class="select"><option value="work">Работа</option><option value="sport">Спорт</option><option value="self">Саморазвитие</option><option value="custom">Другое</option></select></label><label class="field">Иконка<input id="catIcon" class="input" maxlength="4" placeholder="📚"></label></div><div class="form-grid two"><label class="field">Цвет<input id="catColor" class="input" type="color" value="#7c5cff"></label><label class="field">Дневная цель, мин/шт<input id="catDaily" class="input" type="number" min="0" step="5" value="30"></label></div><button class="primary-btn full" type="submit">Создать категорию</button></form>
-            <div id="categoryList" class="chip-list"></div>
-          </section>
-
-          <section class="panel">
-            <div class="section-head"><div><p class="eyebrow">Кольца</p><h2>Настраиваемые кольца</h2></div></div>
-            <form id="ringsForm" class="form"><label class="field">Внешнее кольцо<select id="ring0" class="select"></select></label><label class="field">Среднее кольцо<select id="ring1" class="select"></select></label><label class="field">Внутреннее кольцо<select id="ring2" class="select"></select></label><button class="primary-btn full" type="submit">Сохранить кольца</button></form>
-          </section>
-
-          <section class="panel span-2">
-            <div class="section-head"><div><p class="eyebrow">Главный экран</p><h2>Виджеты</h2></div></div>
-            <div id="widgetSettings" class="widget-settings"></div>
-          </section>
-
-          <section class="panel">
-            <div class="section-head"><div><p class="eyebrow">Шаблоны</p><h2>Быстрое действие</h2></div></div>
-            <form id="templateForm" class="form"><label class="field">Название<input id="tplName" class="input" maxlength="40" required placeholder="Сербский 30 мин"></label><label class="field">Категория<select id="tplCategory" class="select"></select></label><label class="field">Минут<input id="tplMinutes" class="input" type="number" min="1" max="480" value="30"></label><button class="primary-btn full" type="submit">Добавить шаблон</button></form>
-            <div id="templateList" class="chip-list"></div>
-          </section>
-
-          <section class="panel">
-            <div class="section-head"><div><p class="eyebrow">PWA</p><h2>iPhone / кэш / данные</h2></div></div>
-            <div class="install-steps"><p><strong>iPhone:</strong> Safari → Поделиться → На экран «Домой». Интерфейс учитывает челку, Dynamic Island и нижний home indicator.</p><p><strong>Кэш:</strong> если Pages держит старую версию, сбрось кэш интерфейса без удаления данных.</p></div>
-            <div class="button-grid"><button id="exportJson" class="soft-btn">Экспорт JSON</button><button id="importJsonLabel" class="soft-btn">Импорт JSON</button><button id="clearCache" class="soft-btn">Сбросить кэш PWA</button><button id="resetAll" class="danger-btn">Сбросить всё</button></div>
-            <input id="importJson" type="file" accept="application/json,.json" hidden>
-          </section>
-        </div>
-      </section>
-    </main>
-
-    <nav class="bottom-nav" aria-label="Основная навигация">
-      <button class="nav-btn active" data-tab="dashboard">Сегодня</button>
-      <button class="nav-btn" data-tab="log">Запись</button>
-      <button class="nav-btn" data-tab="sport">Спорт</button>
-      <button class="nav-btn" data-tab="self">Развитие</button>
-      <button class="nav-btn" data-tab="focus">Фокус</button>
-      <button class="nav-btn" data-tab="history">История</button>
-      <button class="nav-btn" data-tab="analytics">Аналитика</button>
-      <button class="nav-btn" data-tab="settings">Настройки</button>
-    </nav>
-  </div>
-  <script src="./app.js"></script>
-</body>
-</html>
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b1020"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="LifeOS"><title>LifeOS v10 Stable</title><link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icons/apple-touch-icon.png"><link rel="icon" href="./icons/favicon-32.png"><style>
+:root{
+  --safe-top: env(safe-area-inset-top,0px); --safe-bottom: env(safe-area-inset-bottom,0px);
+  --bg:#071020; --bg2:#0b1020; --text:#f6f7ff; --muted:rgba(246,247,255,.68);
+  --panel:rgba(255,255,255,.10); --panel-strong:rgba(255,255,255,.16); --line:rgba(255,255,255,.14);
+  --accent:#7c5cff; --work:#ff2d55; --sport:#a3ff12; --self:#30d5ff; --warn:#ffd60a;
+  --radius:28px; --radius-sm:18px; --blur:22px; --alpha:.72; --shadow:0 18px 60px rgba(0,0,0,.38);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Arial,sans-serif;
+}
+*{box-sizing:border-box} html{min-height:100%;background:var(--bg);-webkit-text-size-adjust:100%;} body{margin:0;min-height:100%;color:var(--text);background:radial-gradient(circle at 15% -10%, rgba(124,92,255,.45), transparent 34%),radial-gradient(circle at 85% 5%, rgba(48,213,255,.28), transparent 32%),linear-gradient(140deg,var(--bg),var(--bg2));overflow-x:hidden;touch-action:manipulation;} body::before{content:"";position:fixed;inset:0;background:linear-gradient(120deg,rgba(255,255,255,.04),transparent 22%,rgba(255,255,255,.035));pointer-events:none;z-index:-1}
+body[data-theme="light"]{--bg:#eef4ff;--bg2:#fff7fb;--text:#09111f;--muted:rgba(9,17,31,.62);--panel:rgba(255,255,255,.66);--panel-strong:rgba(255,255,255,.82);--line:rgba(10,20,35,.12);--accent:#0a84ff;--shadow:0 20px 65px rgba(72,96,132,.18)}
+body[data-theme="dark"]{--bg:#050813;--bg2:#0d1428;--accent:#0a84ff} body[data-theme="midnight"]{--bg:#03040b;--bg2:#11152b;--accent:#7c5cff} body[data-theme="aurora"]{--bg:#07121d;--bg2:#051b22;--accent:#58ffcb} body[data-theme="fitness"]{--bg:#020407;--bg2:#0c1712;--accent:#a3ff12} body[data-theme="music"]{--bg:#10040d;--bg2:#18081b;--accent:#ff2d55} body[data-theme="journal"]{--bg:#15120f;--bg2:#231b14;--accent:#d6a55b} body[data-theme="ios7"]{--bg:#bde8ff;--bg2:#ffe8f5;--text:#071321;--muted:rgba(7,19,33,.62);--panel:rgba(255,255,255,.50);--accent:#ff65ad} body[data-theme="ios13"]{--bg:#000;--bg2:#0b0b0f;--accent:#0a84ff} body[data-theme="ios17"]{--bg:#080b16;--bg2:#111827;--accent:#5e5ce6} body[data-theme="ios18"]{--bg:#070a16;--bg2:#0c1d31;--accent:#9b7cff} body[data-theme="aqua"]{--bg:#0b71b7;--bg2:#84d8ff;--accent:#e8f8ff} body[data-theme="graphite"]{--bg:#11151d;--bg2:#232833;--accent:#a5adba} body[data-theme="ipod"]{--bg:#f5f5f7;--bg2:#d1d1d6;--text:#08080a;--muted:rgba(8,8,10,.58);--panel:rgba(255,255,255,.72);--accent:#1c1c1e} body[data-theme="snitch"]{--bg:#100a05;--bg2:#2a1606;--accent:#ffd60a}
+img{max-width:100%}button,input,select,textarea{font:inherit}input,select,textarea{font-size:16px}button{border:0;cursor:pointer;-webkit-tap-highlight-color:transparent}.hidden{display:none!important}.muted{color:var(--muted)}.eyebrow{margin:0 0 6px;text-transform:uppercase;letter-spacing:.12em;font-size:11px;font-weight:800;color:var(--muted)}h1,h2,h3,p{margin-top:0}h1{font-size:32px;line-height:.95;letter-spacing:-.06em;margin-bottom:2px}h2{font-size:22px;line-height:1.04;letter-spacing:-.035em;margin-bottom:8px}h3{font-size:17px;margin-bottom:6px}.panel,.glass{background:var(--panel);background:color-mix(in srgb, var(--panel) calc(var(--glass-alpha,72)*1%), transparent);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);backdrop-filter:blur(var(--glass-blur,22px));-webkit-backdrop-filter:blur(var(--glass-blur,22px));}.app{padding:calc(16px + var(--safe-top)) 14px calc(92px + var(--safe-bottom));max-width:1180px;margin:0 auto}.topbar{position:sticky;top:calc(8px + var(--safe-top));z-index:50;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;margin-bottom:14px}.brand{display:flex;gap:10px;align-items:center;min-width:0}.brand img{width:44px;height:44px;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.25)}.brand h1{font-size:24px}.top-actions{display:flex;gap:8px;align-items:center;min-width:0}.main{display:block}.view{display:none;animation:fadeUp .28s ease both}.view.active{display:block}.stack{display:grid;gap:14px}.grid{display:grid;gap:14px}.two{grid-template-columns:repeat(2,minmax(0,1fr))}.three{grid-template-columns:repeat(3,minmax(0,1fr))}.four{grid-template-columns:repeat(4,minmax(0,1fr))}.section-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}.tight{margin-bottom:6px}.card{padding:16px}.hero{padding:18px;display:flex;justify-content:space-between;gap:14px;align-items:flex-start;overflow:hidden;position:relative}.hero::after{content:"";position:absolute;right:-40px;top:-40px;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,var(--accent),transparent 70%);opacity:.28}.hero>*{position:relative}.btn,.primary,.soft,.danger{min-height:44px;padding:11px 15px;border-radius:16px;font-weight:800;color:var(--text);transition:transform .18s ease,opacity .18s ease,background .18s ease;border:1px solid var(--line);white-space:nowrap}.primary{background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 62%,#fff));box-shadow:0 10px 28px color-mix(in srgb,var(--accent) 30%,transparent);color:#fff}.soft{background:var(--panel-strong)}.danger{background:rgba(255,69,58,.18);color:#ffb4ad}.btn:active,.primary:active,.soft:active,.danger:active{transform:scale(.98)}.full{width:100%}.compact{min-height:38px;padding:8px 12px;border-radius:14px}.input,.select,textarea{width:100%;min-height:46px;border:1px solid var(--line);border-radius:16px;padding:10px 12px;background:rgba(255,255,255,.10);color:var(--text);outline:none}textarea{resize:vertical;line-height:1.35}.field{display:grid;gap:7px;font-size:13px;font-weight:800;color:var(--muted)}.form{display:grid;gap:12px}.form-grid{display:grid;gap:10px}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.pill{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.10);border:1px solid var(--line);font-size:12px;font-weight:900;color:var(--muted)}.metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.metric{padding:13px;border-radius:20px;background:rgba(255,255,255,.08);border:1px solid var(--line);min-width:0}.metric b{display:block;font-size:22px;letter-spacing:-.04em}.rings-card{padding:16px;overflow:hidden}.rings-stage{display:grid;grid-template-columns:260px 1fr;gap:16px;align-items:center}.ring-box{position:relative;width:244px;height:244px;margin:0 auto}.ring-box svg{width:100%;height:100%;filter:drop-shadow(0 14px 26px rgba(0,0,0,.22));transform:rotate(-90deg)}.ring-bg{fill:none;stroke:rgba(255,255,255,.12);stroke-linecap:round}.ring-line{fill:none;stroke-linecap:round;transition:stroke-dashoffset .8s cubic-bezier(.2,.8,.2,1)}.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.ring-center strong{font-size:44px;letter-spacing:-.07em}.ring-center span{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);font-weight:900}.rings-list,.weekly-grid{display:grid;gap:10px}.ring-item{display:flex;gap:12px;align-items:center;padding:12px;border-radius:20px;background:rgba(255,255,255,.08);border:1px solid var(--line)}.dot{width:12px;height:12px;border-radius:50%;box-shadow:0 0 20px currentColor}.bar{height:8px;background:rgba(255,255,255,.12);border-radius:999px;overflow:hidden;margin-top:8px}.bar>i{display:block;height:100%;width:0;border-radius:inherit;background:currentColor;transition:width .65s ease}.quick-actions,.quick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.quick-card{min-height:78px;padding:12px;border-radius:20px;background:rgba(255,255,255,.08);border:1px solid var(--line);color:var(--text);text-align:left}.quick-card b{display:block;margin-top:4px}.plan-list,.insight-list,.feed,.journal-list,.achievement-grid{display:grid;gap:10px}.plan-item,.entry,.journal-card,.achievement,.category-card,.template-card{padding:12px;border-radius:20px;background:rgba(255,255,255,.08);border:1px solid var(--line)}.timeline{display:grid;gap:8px}.timeline-row{display:grid;grid-template-columns:72px 1fr auto;gap:10px;align-items:center}.timeline-track{height:14px;background:rgba(255,255,255,.10);border-radius:999px;overflow:hidden}.timeline-fill{height:100%;border-radius:inherit;min-width:6px}.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.cal-cell{aspect-ratio:1/1;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid var(--line);display:grid;place-items:center;font-size:10px;font-weight:900;color:var(--muted)}.cal-cell.good{background:rgba(48,209,88,.38)}.cal-cell.mid{background:rgba(255,214,10,.35)}.cal-cell.bad{background:rgba(255,45,85,.28)}.chart-bars{display:grid;gap:9px}.chart-row{display:grid;grid-template-columns:100px 1fr 54px;gap:10px;align-items:center}.mobile-nav{position:fixed;left:10px;right:10px;bottom:calc(8px + var(--safe-bottom));z-index:80;display:flex;gap:6px;overflow-x:auto;padding:8px;border-radius:24px;background:rgba(20,24,38,.68);border:1px solid rgba(255,255,255,.18);box-shadow:0 12px 40px rgba(0,0,0,.36);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);scrollbar-width:none}.mobile-nav::-webkit-scrollbar{display:none}.nav-btn{flex:0 0 auto;min-width:70px;min-height:50px;border-radius:18px;background:transparent;color:var(--muted);display:grid;place-items:center;font-size:11px;font-weight:900}.nav-btn span{font-size:19px;line-height:1}.nav-btn.active{background:var(--panel-strong);color:var(--text)}.toast{position:fixed;left:14px;right:14px;bottom:calc(84px + var(--safe-bottom));z-index:100;transform:translateY(18px);opacity:0;pointer-events:none;padding:13px 15px;border-radius:18px;background:rgba(20,24,38,.85);border:1px solid rgba(255,255,255,.18);box-shadow:0 14px 38px rgba(0,0,0,.35);backdrop-filter:blur(22px);transition:.24s}.toast.show{opacity:1;transform:translateY(0)}.setup{position:fixed;inset:0;z-index:200;display:grid;place-items:center;padding:calc(20px + var(--safe-top)) 14px calc(20px + var(--safe-bottom));background:rgba(0,0,0,.45);backdrop-filter:blur(18px);overflow:auto}.setup-card{width:min(760px,100%);padding:18px}.app-badge{display:flex;gap:10px;align-items:center}.app-badge img{width:42px;border-radius:13px}.schedule-list{display:grid;gap:9px}.schedule-row{display:grid;grid-template-columns:78px 1fr 1fr;gap:8px;align-items:end;padding:10px;border-radius:18px;background:rgba(255,255,255,.07);border:1px solid var(--line)}.schedule-day{display:flex;gap:8px;align-items:center;font-weight:900;min-height:46px}.theme-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.theme-choice{min-height:70px;border-radius:20px;border:1px solid var(--line);background:linear-gradient(135deg,var(--c1),var(--c2));color:white;text-align:left;padding:11px;font-weight:900;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}.range-row{display:grid;grid-template-columns:1fr 72px;gap:10px;align-items:center}.storage-ok{color:#30d158}.storage-warn{color:#ffd60a}.error-panel{position:fixed;inset:12px;z-index:9999;padding:18px;overflow:auto;background:#16070a;color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:24px;box-shadow:0 20px 80px rgba(0,0,0,.5)}@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}} body.anim-low *{animation:none!important;transition:none!important} body.anim-high .panel{transition:transform .2s ease,box-shadow .2s ease} body.anim-high .panel:hover{transform:translateY(-1px)}
+@media (max-width:820px){.app{padding-left:10px;padding-right:10px}.topbar{align-items:flex-start}.top-actions{max-width:46%;overflow:hidden}.hero{display:grid}.two,.three,.four,.metric-grid{grid-template-columns:1fr}.rings-stage{grid-template-columns:1fr}.ring-box{width:min(78vw,250px);height:min(78vw,250px)}.quick-actions,.quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.section-head{align-items:flex-start}.schedule-row{grid-template-columns:1fr;gap:10px}.theme-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.timeline-row{grid-template-columns:58px 1fr}.timeline-row>small:last-child{grid-column:2}.chart-row{grid-template-columns:82px 1fr 48px}.brand h1{font-size:22px}.brand .eyebrow{display:none}}
+@media (max-width:420px){.topbar{border-radius:24px}.top-actions{display:none}.card,.panel{border-radius:24px}.quick-actions,.quick-grid{grid-template-columns:1fr 1fr}.ring-center strong{font-size:38px}.metric b{font-size:20px}.nav-btn{min-width:64px}.theme-grid{grid-template-columns:1fr}.schedule-row input[type=time]{width:100%}}
+</style></head><body>
+<div id="toast" class="toast"></div>
+<section id="setup" class="setup hidden"><div class="panel setup-card"><div class="app-badge"><img src="./icons/icon-192.png" alt=""><b>LifeOS v10</b></div><p class="eyebrow">Первый запуск</p><h1>Настрой свой график</h1><p class="muted">Выбери рабочий период, дни, часы, тренировки и саморазвитие. Это можно изменить в настройках.</p><form id="setupForm" class="form"><div class="form-grid two"><label class="field">Начало периода<input id="setupStart" class="input" type="date" required></label><label class="field">Конец периода<input id="setupEnd" class="input" type="date" required></label></div><div class="form-grid two"><label class="field">Тренировок в неделю<input id="setupSportTarget" class="input" type="number" min="0" max="14" step="1"></label><label class="field">Саморазвитие в день, мин<input id="setupSelfTarget" class="input" type="number" min="0" max="600" step="5"></label></div><div class="card glass"><div class="section-head tight"><div><p class="eyebrow">График</p><h2>Рабочие дни и часы</h2></div></div><div id="setupSchedule" class="schedule-list"></div></div><div class="row"><button id="setupDefault" class="soft" type="button">Стандарт</button><button class="primary" type="submit">Запустить LifeOS</button></div></form></div></section>
+<div class="app"><header class="topbar panel"><div class="brand"><img src="./icons/icon-192.png" alt=""><div><p class="eyebrow">offline pwa · github pages</p><h1>LifeOS</h1></div></div><div class="top-actions"><button id="installBtn" class="soft compact" hidden>Установить</button><button id="backupTop" class="soft compact">Бэкап</button><select id="themeTop" class="select compact"></select></div></header>
+<main>
+<section id="dashboard" class="view active stack"><div class="hero panel widget" data-widget="hero"><div><p class="eyebrow">Сегодня</p><h2 id="todayTitle">Сегодня</h2><p id="todaySub" class="muted"></p><p id="periodStatus" class="pill"></p></div><input id="activeDate" class="input" type="date"></div>
+<div class="panel rings-card widget" data-widget="rings"><div class="section-head"><div><p class="eyebrow">Apple Fitness style</p><h2>Кольца выполнения</h2></div><button class="soft compact" onclick="document.querySelector('[data-tab=settings]').click()">Настроить</button></div><div class="rings-stage"><div id="ringsGraphic"></div><div id="ringsList" class="rings-list"></div></div><div class="quick-actions"><button id="completeWork" class="primary">Работа</button><button id="completeSport" class="soft">Спорт</button><button id="completeSelf" class="soft">Саморазвитие</button><button id="customEntry" class="soft">Свой вариант</button></div></div>
+<div class="panel card widget" data-widget="weekly"><div class="section-head"><div><p class="eyebrow">Неделя</p><h2>Недельные цели</h2></div></div><div id="weeklyGrid" class="metric-grid"></div></div>
+<div class="panel card widget" data-widget="planner"><div class="section-head"><div><p class="eyebrow">Планировщик</p><h2>План дня</h2></div><button id="acceptPlan" class="soft compact">Принять план</button></div><div id="smartPlan" class="plan-list"></div></div>
+<div class="panel card widget" data-widget="quick"><div class="section-head"><div><p class="eyebrow">Быстро</p><h2>Шаблоны</h2></div></div><div id="quickTemplates" class="quick-grid"></div></div>
+<div class="panel card widget" data-widget="timeline"><div class="section-head"><div><p class="eyebrow">День</p><h2>Таймлайн</h2></div></div><div id="timeline" class="timeline"></div></div>
+<div class="panel card widget" data-widget="insights"><div class="section-head"><div><p class="eyebrow">Умно</p><h2>Подсказки</h2></div></div><div id="insights" class="insight-list"></div></div>
+<div class="panel card widget" data-widget="evening"><div class="section-head"><div><p class="eyebrow">Apple Journal style</p><h2>Вечерний отчёт</h2></div><button id="closeDay" class="primary compact">Закрыть день</button></div><div id="eveningSummary"></div><label class="field">Настроение<select id="moodSelect" class="select"><option>🙂 Нормально</option><option>🔥 Отлично</option><option>😐 Так себе</option><option>😴 Устал</option><option>😤 Сложно</option></select></label><label class="field">Заметка дня<textarea id="dayNote" rows="4" placeholder="Главная победа, что улучшить, что важно завтра"></textarea></label></div></section>
+<section id="log" class="view"><div class="grid two"><div class="panel card"><div class="section-head"><div><p class="eyebrow">Запись</p><h2>Работа, спорт, саморазвитие или свой вариант</h2></div></div><form id="entryForm" class="form"><label class="field">Дата<input id="entryDate" class="input" type="date" required></label><div class="form-grid two"><label class="field">Начало<input id="entryStart" class="input" type="time" value="10:00" required></label><label class="field">Конец<input id="entryEnd" class="input" type="time" value="11:00" required></label></div><label class="field">Категория<select id="entryCategory" class="select"></select></label><label class="field">Подтип / свой вариант<input id="entryTitle" class="input" placeholder="Например: зал, книга, курс, проект, звонки"></label><div class="form-grid two"><label class="field">Интенсивность<select id="entryIntensity" class="select"><option>—</option><option>лёгкая</option><option>средняя</option><option>высокая</option><option>жёсткая</option></select></label><label class="field">Ккал<input id="entryCalories" class="input" type="number" min="0" step="10"></label></div><label class="field">Заметка<textarea id="entryNote" rows="3"></textarea></label><button class="primary full" type="submit">Добавить запись</button></form></div><div class="panel card"><div class="section-head"><div><p class="eyebrow">История</p><h2>Записи выбранного дня</h2></div><button id="copyYesterday" class="soft compact">Скопировать вчера</button></div><div id="dayEntries" class="feed"></div></div></div></section>
+<section id="sport" class="view stack"><div class="panel card"><div class="section-head"><div><p class="eyebrow">Спорт</p><h2>Дневник тренировок</h2></div><button class="soft compact" onclick="document.getElementById('completeSport').click()">+ тренировка</button></div><div id="sportStats" class="metric-grid"></div><div id="sportHistory" class="feed"></div></div></section>
+<section id="self" class="view"><div class="grid two"><div class="panel card"><div class="section-head"><div><p class="eyebrow">Саморазвитие</p><h2>Книги, курсы, проекты и практика</h2></div></div><form id="selfQuickForm" class="form"><label class="field">Тип<select id="selfKind" class="select"><option>Проект</option><option>Книга</option><option>Курс</option><option>Практика</option><option>Конспект</option><option>Язык</option><option>Кодинг</option><option>Ableton</option><option>Свой вариант</option></select></label><label class="field">Название<input id="selfTitle" class="input" placeholder="LifeOS, книга, сербский"></label><label class="field">Минут<input id="selfMinutes" class="input" type="number" value="30" min="1"></label><button class="primary" type="submit">Отметить развитие</button></form></div><div class="panel card"><h2>История саморазвития</h2><div id="selfHistory" class="feed"></div></div></div></section>
+<section id="focus" class="view stack"><div class="panel card"><div class="section-head"><div><p class="eyebrow">Фокус</p><h2>Pomodoro / deep work</h2></div></div><div id="focusClock" style="font-size:64px;font-weight:900;letter-spacing:-.08em;text-align:center">25:00</div><div id="focusModes" class="row"></div><div class="form-grid two"><label class="field">Категория<select id="focusCategory" class="select"></select></label><label class="field">Название<input id="focusTitle" class="input" placeholder="Фокус-сессия"></label></div><div class="row"><button id="focusStart" class="primary">Старт</button><button id="focusPause" class="soft">Пауза</button><button id="focusStop" class="soft">Завершить</button></div></div></section>
+<section id="history" class="view stack"><div class="panel card"><div class="section-head"><div><p class="eyebrow">Apple Journal style</p><h2>История дней</h2></div></div><div id="journalList" class="journal-list"></div></div></section>
+<section id="analytics" class="view stack"><div class="panel card"><h2>Аналитика</h2><div id="analyticsMetrics" class="metric-grid"></div></div><div class="panel card"><h2>Календарь продуктивности</h2><div id="calendarGrid" class="cal-grid"></div></div><div class="panel card"><h2>Что съедает время</h2><div id="composition" class="chart-bars"></div></div><div class="panel card"><h2>Бесконечные ачивки</h2><div id="achievements" class="achievement-grid"></div></div></section>
+<section id="settings" class="view stack"><div class="panel card"><div class="section-head"><div><p class="eyebrow">Хранилище</p><h2>Статус</h2></div><span id="storageStatus" class="pill"></span></div><div class="row"><button id="exportJson" class="soft">Экспорт JSON</button><button id="exportCsv" class="soft">Экспорт CSV</button><button id="exportHtml" class="soft">HTML-отчёт</button><button id="importJsonLabel" class="soft">Импорт JSON</button><input id="importJson" type="file" accept="application/json" hidden></div></div>
+<div class="panel card"><h2>График работы</h2><form id="configForm" class="form"><div class="form-grid two"><label class="field">Начало периода<input id="configStart" class="input" type="date"></label><label class="field">Конец периода<input id="configEnd" class="input" type="date"></label></div><div class="form-grid two"><label class="field">Тренировок в неделю<input id="configSportTarget" class="input" type="number" min="0" max="14"></label><label class="field">Саморазвитие в день, мин<input id="configSelfTarget" class="input" type="number" min="0" max="600"></label></div><div id="configSchedule" class="schedule-list"></div><div class="row"><button class="primary" type="submit">Сохранить график</button><button id="configDefault" class="soft" type="button">Стандарт</button></div></form></div>
+<div class="panel card"><h2>Визуал и Liquid Glass</h2><form id="visualForm" class="form"><label class="field">Тема<select id="themeSelect" class="select"></select></label><label class="field">Прозрачность glass<div class="range-row"><input id="glassOpacity" type="range" min="25" max="95"><span class="pill">%</span></div></label><label class="field">Размытие<div class="range-row"><input id="glassBlur" type="range" min="0" max="38"><span class="pill">px</span></div></label><label class="field">Анимации<select id="animationLevel" class="select"><option value="low">минимум</option><option value="normal">стандарт</option><option value="high">максимум</option></select></label><button class="primary" type="submit">Сохранить визуал</button></form><div id="themeGrid" class="theme-grid" style="margin-top:12px"></div></div>
+<div class="panel card"><h2>Кольца</h2><form id="ringsForm" class="form"><div class="form-grid three"><label class="field">Кольцо 1<select id="ring0" class="select"></select></label><label class="field">Кольцо 2<select id="ring1" class="select"></select></label><label class="field">Кольцо 3<select id="ring2" class="select"></select></label></div><button class="primary" type="submit">Сохранить кольца</button></form></div>
+<div class="panel card"><h2>Свои категории</h2><form id="categoryForm" class="form"><div class="form-grid two"><label class="field">Название<input id="catName" class="input" placeholder="Сербский, Ableton, Учёба"></label><label class="field">Тип<select id="catType" class="select"><option value="self">саморазвитие</option><option value="sport">спорт</option><option value="work">работа</option><option value="custom">свой вариант</option></select></label></div><div class="form-grid three"><label class="field">Иконка<input id="catIcon" class="input" value="✨"></label><label class="field">Цвет<input id="catColor" class="input" type="color" value="#7c5cff"></label><label class="field">Цель в день<input id="catDaily" class="input" type="number" value="30"></label></div><button class="primary" type="submit">Создать категорию</button></form><div id="categoryList" class="grid two" style="margin-top:12px"></div></div>
+<div class="panel card"><h2>Виджеты главного экрана</h2><div id="widgetSettings" class="grid two"></div></div>
+<div class="panel card"><h2>Свои быстрые шаблоны</h2><form id="templateForm" class="form"><div class="form-grid three"><label class="field">Название<input id="tplName" class="input" placeholder="Сербский 30м"></label><label class="field">Категория<select id="tplCategory" class="select"></select></label><label class="field">Минут<input id="tplMinutes" class="input" type="number" value="30"></label></div><button class="primary" type="submit">Добавить шаблон</button></form><div id="templateList" class="grid two" style="margin-top:12px"></div></div>
+<div class="panel card"><h2>PWA и кэш</h2><div class="row"><button id="clearCache" class="soft">Очистить кэш PWA</button><button id="resetAll" class="danger">Сбросить всё</button></div><p class="muted">Для iPhone: Safari → Поделиться → На экран «Домой». Интерфейс учитывает челку, Dynamic Island и нижний home indicator.</p></div></section>
+</main></div>
+<nav class="mobile-nav"><button class="nav-btn active" data-tab="dashboard"><span>◎</span>Сегодня</button><button class="nav-btn" data-tab="log"><span>＋</span>Журнал</button><button class="nav-btn" data-tab="sport"><span>🏃</span>Спорт</button><button class="nav-btn" data-tab="self"><span>📚</span>Развитие</button><button class="nav-btn" data-tab="focus"><span>⏱</span>Фокус</button><button class="nav-btn" data-tab="history"><span>✎</span>История</button><button class="nav-btn" data-tab="analytics"><span>▦</span>Аналитика</button><button class="nav-btn" data-tab="settings"><span>⚙</span>Настройки</button></nav>
+<script>
+(function(){
+'use strict';
+var KEY='lifeos.v10.stable';
+var OLD_KEYS=['lifeos.v9.complete','lifeos.v8.rings','lifeos.v7.design','lifeos.v6.visual','lifeos.v5.config','lifeos.state'];
+var DAYS=[['mon','Пн'],['tue','Вт'],['wed','Ср'],['thu','Чт'],['fri','Пт'],['sat','Сб'],['sun','Вс']];
+var DEFAULT_SCHEDULE={mon:{enabled:true,start:'10:00',end:'17:00'},tue:{enabled:true,start:'10:00',end:'17:00'},wed:{enabled:true,start:'10:00',end:'17:00'},thu:{enabled:true,start:'10:00',end:'17:00'},fri:{enabled:true,start:'10:00',end:'17:00'},sat:{enabled:true,start:'10:00',end:'14:00'},sun:{enabled:false,start:'10:00',end:'14:00'}};
+var THEMES=[['system','Системная','#18223d','#7c5cff'],['light','iOS Light','#f7f9ff','#71c7ff'],['dark','iOS Dark','#050813','#0a84ff'],['midnight','Midnight','#050816','#7c5cff'],['aurora','Aurora','#07121d','#58ffcb'],['fitness','Apple Fitness','#070b11','#a3ff12'],['music','Apple Music','#0c0610','#ff2d55'],['journal','Apple Journal','#15120f','#d6a55b'],['ios7','iOS 7 Frost','#7ac8ff','#f8a1d1'],['ios13','iOS 13','#000000','#0a84ff'],['ios17','iOS 17 Pro','#080b16','#5e5ce6'],['ios18','iOS 18 Liquid','#070a16','#9b7cff'],['aqua','Classic Aqua','#42bfff','#0b65b5'],['graphite','Graphite','#11151d','#a5adba'],['ipod','iPod','#f5f5f7','#1c1c1e'],['snitch','Стукач','#100a05','#ffd60a']];
+var DEFAULT_WIDGETS={hero:true,rings:true,weekly:true,planner:true,quick:true,timeline:true,insights:true,evening:true};
+var FOCUS_MODES=[{id:'25',label:'25/5',minutes:25},{id:'50',label:'50/10',minutes:50},{id:'90',label:'90/20',minutes:90},{id:'custom',label:'Свой 30',minutes:30}];
+var state, activeTab='dashboard', storageName='memory';
+var focus={mode:FOCUS_MODES[0],remaining:1500,running:false,interval:null};
+function $(s,r){return (r||document).querySelector(s)} function $$(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
+function esc(s){return String(s==null?'':s).replace(/[&<>\"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]})}
+function pad(n){return String(n).padStart(2,'0')} function uid(){return Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-5)}
+function todayISO(){return new Date().toISOString().slice(0,10)} function dateObj(iso){var p=String(iso||todayISO()).split('-'); return new Date(+p[0],(+p[1]||1)-1,+p[2]||1)}
+function addDays(iso,n){var d=dateObj(iso); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10)}
+function shortDate(iso){try{return dateObj(iso).toLocaleDateString('ru-RU',{day:'numeric',month:'short'})}catch(e){return iso}}
+function ruDate(iso){try{return dateObj(iso).toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}catch(e){return iso}}
+function dayKey(iso){return ['sun','mon','tue','wed','thu','fri','sat'][dateObj(iso).getDay()]}
+function min(t){var p=String(t||'00:00').split(':'); return (+p[0]||0)*60+(+p[1]||0)} function hhmm(m){m=Math.max(0,Math.round(m)); return pad(Math.floor(m/60)%24)+':'+pad(m%60)}
+function dur(m){m=Math.max(0,Math.round(m)); var h=Math.floor(m/60),mm=m%60; return h?(h+'ч'+(mm?' '+mm+'м':'')):(mm+'м')} function pct(a,b){return b>0?Math.max(0,Math.min(100,Math.round(a/b*100))):0}
+function allDates(start,end){var a=[],d=start; var guard=0; while(d<=end && guard<800){a.push(d); d=addDays(d,1); guard++} return a}
+function weekBounds(iso){var d=dateObj(iso),dow=(d.getDay()+6)%7,st=addDays(iso,-dow); return {start:st,end:addDays(st,6)}} function weekDates(iso){var b=weekBounds(iso); return allDates(b.start,b.end)}
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function canUseStorage(s){try{var k='lifeos_test_'+Date.now(); s.setItem(k,'1'); s.removeItem(k); return true}catch(e){return false}}
+var mem={};
+var store=(function(){
+  try{ if(window.localStorage && canUseStorage(localStorage)){storageName='localStorage'; return localStorage} }catch(e){}
+  try{ if(window.sessionStorage && canUseStorage(sessionStorage)){storageName='sessionStorage'; return sessionStorage} }catch(e){}
+  storageName='memory'; return {getItem:function(k){return mem[k]||null},setItem:function(k,v){mem[k]=String(v)},removeItem:function(k){delete mem[k]}};
+})();
+function defaults(){return {version:10,configured:false,activeDate:todayISO(),theme:'system',glassOpacity:72,glassBlur:22,animationLevel:'normal',config:{startDate:'2026-07-03',endDate:'2026-08-31',sportWeeklyTarget:3,selfDailyTarget:60,schedule:clone(DEFAULT_SCHEDULE)},categories:[{id:'work',name:'Работа',type:'work',icon:'💼',color:'#ff2d55',dailyTarget:0,weeklyTarget:0,unit:'мин'},{id:'sport',name:'Спорт',type:'sport',icon:'🏃',color:'#a3ff12',dailyTarget:1,weeklyTarget:3,unit:'трен.'},{id:'self',name:'Саморазвитие',type:'self',icon:'📚',color:'#30d5ff',dailyTarget:60,weeklyTarget:420,unit:'мин'},{id:'rest',name:'Отдых',type:'custom',icon:'☕',color:'#ffd60a',dailyTarget:0,weeklyTarget:0,unit:'мин'},{id:'other',name:'Другое',type:'custom',icon:'✨',color:'#bf5af2',dailyTarget:0,weeklyTarget:0,unit:'мин'}],ringSlots:['work','sport','self'],widgets:clone(DEFAULT_WIDGETS),entries:[],moods:{},dayClosed:{},goals:[],projects:[],templates:[],finance:{rate:0,bonus:0,penalty:0,target:0}}}
+function inferCat(e){var t=String(e.type||e.category||'').toLowerCase(); if(t.indexOf('работ')>=0)return'work'; if(t.indexOf('спорт')>=0||e.sportActivity)return'sport'; if(t.indexOf('само')>=0||t.indexOf('уч')>=0||e.selfdevActivity)return'self'; return e.categoryId||'other'}
+function normalize(s){var base=defaults(); if(!s)return base; try{ if(s.config) base.config=Object.assign(base.config,s.config); if(s.workConfig){base.config.startDate=s.workConfig.startDate||base.config.startDate;base.config.endDate=s.workConfig.endDate||base.config.endDate;base.config.sportWeeklyTarget=Number(s.workConfig.targetWorkoutsPerWeek||base.config.sportWeeklyTarget); if(s.workConfig.schedule)base.config.schedule=Object.assign(base.config.schedule,s.workConfig.schedule)} if(s.categories&&s.categories.length)base.categories=s.categories; if(s.ringSlots)base.ringSlots=s.ringSlots; if(s.widgets)base.widgets=Object.assign(base.widgets,s.widgets); if(s.entries)base.entries=s.entries.map(function(e){return {id:e.id||uid(),date:e.date||todayISO(),start:e.start||'10:00',end:e.end||'10:30',categoryId:inferCat(e),title:e.title||e.selfdevActivity||e.sportActivity||e.type||'',intensity:e.intensity||'',calories:Number(e.calories||0),note:e.note||'',source:e.source||'migrated'}}); if(s.moods)base.moods=s.moods; if(s.daily)base.moods=s.daily; if(s.dayClosed)base.dayClosed=s.dayClosed; if(s.goals)base.goals=s.goals; if(s.projects)base.projects=s.projects; if(s.templates)base.templates=s.templates; if(s.finance)base.finance=s.finance; base.theme=s.theme||base.theme; base.glassOpacity=Number(s.glassOpacity||base.glassOpacity); base.glassBlur=Number(s.glassBlur||base.glassBlur); base.animationLevel=s.animationLevel||base.animationLevel; base.configured=!!(s.configured||s.hasSetup||s.workConfig); return base}catch(e){return base}}
+function load(){var raw=store.getItem(KEY); if(raw){try{return normalize(JSON.parse(raw))}catch(e){}} for(var i=0;i<OLD_KEYS.length;i++){var r=store.getItem(OLD_KEYS[i]); if(r){try{return normalize(JSON.parse(r))}catch(e){}}} return defaults()}
+function save(){try{store.setItem(KEY,JSON.stringify(state))}catch(e){toast('Данные не записались. Сделай экспорт JSON.')}}
+function toast(msg){var t=$('#toast'); if(!t)return; t.textContent=msg; t.classList.add('show'); clearTimeout(t._timer); t._timer=setTimeout(function(){t.classList.remove('show')},2500)}
+function cat(id){for(var i=0;i<state.categories.length;i++)if(state.categories[i].id===id)return state.categories[i]; return state.categories[0]}
+function catsByType(t){return state.categories.filter(function(c){return t==='all'||c.type===t||c.id===t})}
+function entryMins(e){var s=min(e.start),en=min(e.end); if(en<s)en+=1440; return Math.max(0,en-s)}
+function entriesFor(date){return state.entries.filter(function(e){return e.date===date}).sort(function(a,b){return min(a.start)-min(b.start)})}
+function entriesByType(date,type){return entriesFor(date).filter(function(e){var c=cat(e.categoryId); return c.type===type||e.categoryId===type})}
+function sum(date,type){return entriesByType(date,type).reduce(function(a,e){return a+entryMins(e)},0)} function sportSessions(date){return entriesByType(date,'sport').length}
+function planFor(date){var s=(state.config.schedule||DEFAULT_SCHEDULE)[dayKey(date)]||DEFAULT_SCHEDULE[dayKey(date)]; if(!s.enabled)return {enabled:false,start:s.start,end:s.end,minutes:0,label:'Выходной'}; var minutes=Math.max(0,min(s.end)-min(s.start)); var l=''; for(var i=0;i<DAYS.length;i++)if(DAYS[i][0]===dayKey(date))l=DAYS[i][1]; return {enabled:true,start:s.start,end:s.end,minutes:minutes,label:l+' '+s.start+'–'+s.end}}
+function metricDaily(catId,date){date=date||state.activeDate; var c=cat(catId),p=planFor(date),value=0,target=0; if(catId==='work'||c.type==='work'){value=sum(date,'work'); target=p.minutes; return {value:value,target:target,unit:'мин',percent:target?pct(value,target):(value?100:0)}} if(catId==='sport'||c.type==='sport'){value=sportSessions(date); target=Math.max(1,Number(c.dailyTarget||1)); return {value:value,target:target,unit:'трен.',percent:pct(value,target)}} value=sum(date,c.type==='self'?'self':catId); target=Number(c.dailyTarget||(c.type==='self'?state.config.selfDailyTarget:60)); return {value:value,target:target,unit:c.unit||'мин',percent:target?pct(value,target):(value?100:0)}}
+function metricWeekly(catId,date){date=date||state.activeDate; var c=cat(catId),days=weekDates(date),value=0,target=0,i; if(catId==='work'||c.type==='work'){for(i=0;i<days.length;i++){target+=planFor(days[i]).minutes; value+=sum(days[i],'work')} return {value:value,target:target,unit:'мин',percent:pct(value,target)}} if(catId==='sport'||c.type==='sport'){for(i=0;i<days.length;i++)value+=sportSessions(days[i]); target=Number(state.config.sportWeeklyTarget||c.weeklyTarget||3); return {value:value,target:target,unit:'трен.',percent:pct(value,target)}} for(i=0;i<days.length;i++)value+=sum(days[i],c.type==='self'?'self':catId); target=Number(c.weeklyTarget||((c.dailyTarget||state.config.selfDailyTarget)*7)); return {value:value,target:target,unit:c.unit||'мин',percent:pct(value,target)}}
+function workPlanPeriod(){return allDates(state.config.startDate,state.config.endDate).reduce(function(a,d){return a+planFor(d).minutes},0)} function workFactPeriod(){return state.entries.filter(function(e){return cat(e.categoryId).type==='work'&&e.date>=state.config.startDate&&e.date<=state.config.endDate}).reduce(function(a,e){return a+entryMins(e)},0)}
+function applyTheme(){var theme=state.theme; if(theme==='system'){try{theme=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}catch(e){theme='dark'}} document.body.setAttribute('data-theme',theme); document.body.classList.toggle('anim-low',state.animationLevel==='low'); document.body.classList.toggle('anim-high',state.animationLevel==='high'); document.documentElement.style.setProperty('--glass-alpha',Number(state.glassOpacity||72)); document.documentElement.style.setProperty('--glass-blur',(state.glassBlur||22)+'px')}
+function themeOptions(value){return THEMES.map(function(t){return '<option value="'+t[0]+'" '+(value===t[0]?'selected':'')+'>'+t[1]+'</option>'}).join('')}
+function renderSchedule(id,prefix){var el=$(id); if(!el)return; var html=''; for(var i=0;i<DAYS.length;i++){var k=DAYS[i][0],l=DAYS[i][1],s=(state.config.schedule||DEFAULT_SCHEDULE)[k]||DEFAULT_SCHEDULE[k]; html+='<div class="schedule-row"><label class="schedule-day"><input id="'+prefix+'-'+k+'-enabled" type="checkbox" '+(s.enabled?'checked':'')+'><span>'+l+'</span></label><label class="field">Начало<input id="'+prefix+'-'+k+'-start" class="input" type="time" value="'+s.start+'" step="60"></label><label class="field">Конец<input id="'+prefix+'-'+k+'-end" class="input" type="time" value="'+s.end+'" step="60"></label></div>'} el.innerHTML=html}
+function readSchedule(prefix){var s={}; for(var i=0;i<DAYS.length;i++){var k=DAYS[i][0],st=$('#'+prefix+'-'+k+'-start'),en=$('#'+prefix+'-'+k+'-end'),ch=$('#'+prefix+'-'+k+'-enabled'); var a=st?st.value:DEFAULT_SCHEDULE[k].start,b=en?en.value:DEFAULT_SCHEDULE[k].end; if(min(b)<=min(a))b=a; s[k]={enabled:!!(ch&&ch.checked),start:a,end:b}} return s}
+function svgRing(items){var radii=[96,72,48], widths=[16,16,16], size=244, c=122, html='<div class="ring-box"><svg viewBox="0 0 244 244">'; for(var i=0;i<3;i++){var r=radii[i],circ=2*Math.PI*r, it=items[i], off=circ*(1-Math.min(100,it.percent)/100); html+='<circle class="ring-bg" cx="122" cy="122" r="'+r+'" stroke-width="'+widths[i]+'"></circle><circle class="ring-line" cx="122" cy="122" r="'+r+'" stroke-width="'+widths[i]+'" stroke="'+it.color+'" stroke-dasharray="'+circ.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'"></circle>'} var avg=Math.round(items.reduce(function(a,x){return a+x.percent},0)/items.length); html+='</svg><div class="ring-center"><strong>'+avg+'%</strong><span>день</span></div></div>'; return html}
+function fmtMetric(m){return (m.unit==='трен.'?m.value:dur(m.value))+' / '+(m.unit==='трен.'?m.target:dur(m.target))}
+function renderRings(){var ids=state.ringSlots||['work','sport','self']; var items=[]; for(var i=0;i<3;i++){var c=cat(ids[i]||ids[0]),m=metricDaily(c.id); items.push({c:c,percent:m.percent,color:c.color,m:m})} $('#ringsGraphic').innerHTML=svgRing(items); $('#ringsList').innerHTML=items.map(function(it){return '<div class="ring-item"><span class="dot" style="color:'+it.color+';background:'+it.color+'"></span><div style="flex:1"><b>'+esc(it.c.icon+' '+it.c.name)+'</b><small class="muted">'+fmtMetric(it.m)+'</small><div class="bar" style="color:'+it.color+'"><i style="width:'+it.m.percent+'%"></i></div></div><strong>'+it.m.percent+'%</strong></div>'}).join('')}
+function renderWeekly(){var ids=state.ringSlots||['work','sport','self']; $('#weeklyGrid').innerHTML=ids.map(function(id){var c=cat(id),m=metricWeekly(id); return '<div class="metric"><span class="dot" style="background:'+c.color+';color:'+c.color+'"></span><b>'+m.percent+'%</b><small class="muted">'+esc(c.name)+' · '+fmtMetric(m)+'</small><div class="bar" style="color:'+c.color+'"><i style="width:'+m.percent+'%"></i></div></div>'}).join('')}
+function setTab(tab){activeTab=tab; $$('.view').forEach(function(v){v.classList.toggle('active',v.id===tab)}); $$('.nav-btn').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-tab')===tab)}); window.scrollTo(0,0); renderAll()}
+function quickAdd(categoryId,minutes,title,note,opt){opt=opt||{}; var now=new Date(),end=opt.end||pad(now.getHours())+':'+pad(now.getMinutes()),start=opt.start||hhmm(min(end)-minutes); state.entries.push({id:uid(),date:state.activeDate,start:start,end:end,categoryId:categoryId,title:title||'',intensity:opt.intensity||'',calories:Number(opt.calories||0),note:note||'',source:'quick'}); save(); toast('Запись добавлена'); renderAll()}
+function completeWork(){var p=planFor(state.activeDate); if(!p.minutes){toast('Сегодня выходной по графику'); return} state.entries=state.entries.filter(function(e){return !(e.date===state.activeDate&&e.source==='auto-work')}); state.entries.push({id:uid(),date:state.activeDate,start:p.start,end:p.end,categoryId:'work',title:'Полный рабочий день',note:'Авто-зачёт плана',source:'auto-work'}); save(); toast('Рабочий день засчитан'); renderAll()}
+function completeSport(){quickAdd('sport',45,'Тренировка','Быстрая отметка спорта',{start:'19:00',end:'19:45',intensity:'средняя',calories:250})} function completeSelf(){var m=Number(state.config.selfDailyTarget||60); quickAdd('self',m,'Саморазвитие','Быстрая отметка развития',{start:'20:00',end:hhmm(20*60+m)})}
+function renderTop(){var d=state.activeDate; $('#todayTitle').textContent=ruDate(d); $('#todaySub').textContent=planFor(d).label+' · '+entriesFor(d).length+' записей'; $('#activeDate').value=d; $('#entryDate').value=d; $('#themeTop').innerHTML=themeOptions(state.theme); $('#storageStatus').innerHTML=storageName==='localStorage'?'<span class="storage-ok">localStorage активен</span>':'<span class="storage-warn">резервное хранение: '+storageName+'</span>'; var p=workPlanPeriod(),f=workFactPeriod(); $('#periodStatus').textContent='Период '+shortDate(state.config.startDate)+' — '+shortDate(state.config.endDate)+' · работа '+dur(f)+' / '+dur(p)}
+function renderPlanner(){var p=planFor(state.activeDate), html=''; if(p.enabled)html+='<div class="plan-item"><b>💼 Работа</b><p class="muted">'+p.start+'–'+p.end+' · план '+dur(p.minutes)+'</p></div>'; else html+='<div class="plan-item"><b>🌿 Выходной по графику</b><p class="muted">Можно закрыть спорт, саморазвитие или свой вариант.</p></div>'; html+='<div class="plan-item"><b>🏃 Спорт</b><p class="muted">Цель недели: '+state.config.sportWeeklyTarget+' тренировок. Сейчас: '+metricWeekly('sport').value+'</p></div>'; html+='<div class="plan-item"><b>📚 Саморазвитие</b><p class="muted">Рекомендация на день: '+dur(state.config.selfDailyTarget)+'</p></div>'; $('#smartPlan').innerHTML=html}
+function renderQuickTemplates(){var base=[{name:'Работа 1ч',cat:'work',min:60,icon:'💼'},{name:'Полный день',cat:'work',full:true,icon:'✅'},{name:'Тренировка 45м',cat:'sport',min:45,icon:'🏃'},{name:'Прогулка 30м',cat:'sport',min:30,icon:'🚶'},{name:'Книга 20м',cat:'self',min:20,icon:'📖'},{name:'Курс 40м',cat:'self',min:40,icon:'🎓'},{name:'Проект 1ч',cat:'self',min:60,icon:'🛠️'},{name:'Свой вариант',cat:'other',min:30,icon:'✨'}]; var all=base.concat(state.templates||[]); $('#quickTemplates').innerHTML=all.map(function(t,i){return '<button class="quick-card" data-quick="'+i+'"><span>'+esc(t.icon||cat(t.cat||t.categoryId).icon)+'</span><b>'+esc(t.name)+'</b><small class="muted">'+(t.full?'по графику':dur(t.min||t.minutes||30))+'</small></button>'}).join('')}
+function renderTimeline(){var items=entriesFor(state.activeDate); if(!items.length){$('#timeline').innerHTML='<div class="plan-item muted">Пока пусто. Добавь работу, спорт, саморазвитие или свой вариант.</div>'; return} $('#timeline').innerHTML=items.map(function(e){var c=cat(e.categoryId),m=entryMins(e),w=Math.max(3,Math.min(100,m/480*100)); return '<div class="timeline-row"><b>'+e.start+'</b><div><div class="timeline-track"><div class="timeline-fill" style="width:'+w+'%;background:'+c.color+'"></div></div><small>'+esc(c.icon+' '+(e.title||c.name))+'</small></div><small class="muted">'+dur(m)+'</small></div>'}).join('')}
+function renderInsights(){var insights=[],p=planFor(state.activeDate),w=metricWeekly('sport'),self=metricDaily('self'); if(p.enabled&&sum(state.activeDate,'work')===0)insights.push('Сегодня рабочий день, но работы ещё нет в журнале.'); if(p.enabled&&sum(state.activeDate,'work')<p.minutes)insights.push('До плана работы осталось '+dur(p.minutes-sum(state.activeDate,'work'))+'.'); if(w.value<w.target)insights.push('Для спортивной цели недели осталось '+(w.target-w.value)+' тренировок.'); if(self.value<self.target)insights.push('Саморазвитие: осталось '+dur(self.target-self.value)+' до дневного кольца.'); if(!insights.length)insights.push('День выглядит закрытым. Можно добавить заметку и вечерний отчёт.'); $('#insights').innerHTML=insights.map(function(x){return '<div class="plan-item">💡 '+esc(x)+'</div>'}).join('')}
+function renderEvening(){var d=state.activeDate,m=state.moods[d]||{}; $('#moodSelect').value=m.mood||'🙂 Нормально'; $('#dayNote').value=m.note||''; var a=metricDaily('work'),b=metricDaily('sport'),c=metricDaily('self'); $('#eveningSummary').innerHTML='<div class="metric-grid"><div class="metric"><b>'+a.percent+'%</b><small>Работа</small></div><div class="metric"><b>'+b.value+'</b><small>Тренировки</small></div><div class="metric"><b>'+dur(c.value)+'</b><small>Саморазвитие</small></div><div class="metric"><b>'+(state.dayClosed[d]?'Закрыт':'Открыт')+'</b><small>Статус</small></div></div>'}
+function renderEntryForm(){var opts=state.categories.map(function(c){return '<option value="'+c.id+'">'+esc(c.icon+' '+c.name)+'</option>'}).join(''); ['entryCategory','focusCategory','tplCategory'].forEach(function(id){var el=$('#'+id); if(el){var old=el.value; el.innerHTML=opts; if(old)el.value=old}})}
+function renderDayEntries(){var items=entriesFor(state.activeDate); $('#dayEntries').innerHTML=items.length?items.map(function(e){var c=cat(e.categoryId); return '<div class="entry"><div class="section-head tight"><div><b>'+esc(c.icon+' '+(e.title||c.name))+'</b><p class="muted">'+e.start+'–'+e.end+' · '+dur(entryMins(e))+(e.calories?' · '+e.calories+' ккал':'')+'</p></div><div class="row"><button class="soft compact" data-copy-entry="'+e.id+'">Копия</button><button class="danger compact" data-del-entry="'+e.id+'">Удалить</button></div></div>'+(e.note?'<p>'+esc(e.note)+'</p>':'')+'</div>'}).join(''):'<div class="plan-item muted">Записей за день нет.</div>'}
+function renderSport(){var days=weekDates(state.activeDate),week=0,kcal=0; state.entries.forEach(function(e){if(cat(e.categoryId).type==='sport'){kcal+=Number(e.calories||0); if(days.indexOf(e.date)>=0)week++}}); $('#sportStats').innerHTML='<div class="metric"><b>'+sportSessions(state.activeDate)+'</b><small>Сегодня</small></div><div class="metric"><b>'+week+'/'+state.config.sportWeeklyTarget+'</b><small>Неделя</small></div><div class="metric"><b>'+kcal+'</b><small>Ккал всего</small></div><div class="metric"><b>'+state.entries.filter(function(e){return cat(e.categoryId).type==='sport'}).length+'</b><small>Тренировок</small></div>'; var items=state.entries.filter(function(e){return cat(e.categoryId).type==='sport'}).slice(-20).reverse(); $('#sportHistory').innerHTML=items.length?items.map(entryCard).join(''):'<div class="plan-item muted">Спорта ещё нет.</div>'}
+function entryCard(e){var c=cat(e.categoryId); return '<div class="entry"><b>'+esc(c.icon+' '+(e.title||c.name))+'</b><p class="muted">'+shortDate(e.date)+' · '+e.start+'–'+e.end+' · '+dur(entryMins(e))+'</p>'+(e.note?'<p>'+esc(e.note)+'</p>':'')+'</div>'}
+function renderSelf(){var items=state.entries.filter(function(e){return cat(e.categoryId).type==='self'}).slice(-30).reverse(); $('#selfHistory').innerHTML=items.length?items.map(entryCard).join(''):'<div class="plan-item muted">Саморазвитие ещё не отмечено.</div>'}
+function renderHistory(){var dates=allDates(addDays(state.activeDate,-13),state.activeDate).reverse(); $('#journalList').innerHTML=dates.map(function(d){var es=entriesFor(d),m=state.moods[d]||{},work=sum(d,'work'),sport=sportSessions(d),self=sum(d,'self'); return '<div class="journal-card"><div class="section-head tight"><div><b>'+shortDate(d)+'</b><p class="muted">'+(m.mood||'')+'</p></div><span class="pill">'+(state.dayClosed[d]?'закрыт':'день')+'</span></div><p>💼 '+dur(work)+' · 🏃 '+sport+' · 📚 '+dur(self)+'</p>'+(m.note?'<p class="muted">'+esc(m.note)+'</p>':'')+'<small class="muted">'+es.length+' записей</small></div>'}).join('')}
+function renderCalendar(){var dates=allDates(state.config.startDate,state.config.endDate); $('#calendarGrid').innerHTML=dates.map(function(d){var p=planFor(d),v=p.minutes?pct(sum(d,'work'),p.minutes):0,cls=p.minutes?(v>=90?'good':(v>0?'mid':'bad')):''; return '<div class="cal-cell '+cls+'" title="'+d+'">'+dateObj(d).getDate()+'</div>'}).join('')}
+function renderAnalytics(){var p=workPlanPeriod(),f=workFactPeriod(),left=Math.max(0,p-f),daysLeft=allDates(state.activeDate,state.config.endDate).filter(function(d){return planFor(d).minutes>0}).length; $('#analyticsMetrics').innerHTML='<div class="metric"><b>'+dur(f)+'</b><small>Работа факт</small></div><div class="metric"><b>'+dur(p)+'</b><small>План периода</small></div><div class="metric"><b>'+dur(left)+'</b><small>Осталось</small></div><div class="metric"><b>'+dur(daysLeft?left/daysLeft:0)+'</b><small>Нужно в день</small></div>'; renderCalendar(); renderComposition(); renderAchievements()}
+function renderComposition(){var totals={work:0,sport:0,self:0,custom:0},total=0; state.entries.forEach(function(e){var t=cat(e.categoryId).type,m=entryMins(e); totals[t]=(totals[t]||0)+m; total+=m}); var labels={work:'Работа',sport:'Спорт',self:'Саморазвитие',custom:'Другое'}; $('#composition').innerHTML=Object.keys(totals).map(function(k){var v=totals[k],pr=total?pct(v,total):0; return '<div class="chart-row"><b>'+labels[k]+'</b><div class="bar"><i style="width:'+pr+'%;background:var(--accent)"></i></div><small>'+pr+'%</small></div>'}).join('')}
+function thresholds(n){var a=[1,3,5,10,15,25,50,75,100,150,250,500,750,1000]; while(a[a.length-1]<(n+100)){a.push(a[a.length-1]+(a[a.length-1]>=1000?500:250))} return a}
+function renderAchievements(){var workH=Math.floor(workFactPeriod()/60), sport=state.entries.filter(function(e){return cat(e.categoryId).type==='sport'}).length, selfH=Math.floor(state.entries.filter(function(e){return cat(e.categoryId).type==='self'}).reduce(function(a,e){return a+entryMins(e)},0)/60), entries=state.entries.length; var groups=[['Работа',workH,'ч','💼'],['Спорт',sport,'трен.','🏃'],['Саморазвитие',selfH,'ч','📚'],['Записи',entries,'шт','✨']]; var html=''; groups.forEach(function(g){var th=thresholds(g[1]),un=th.filter(function(x){return g[1]>=x}),next=th.filter(function(x){return g[1]<x}).slice(0,2); if(un.length)html+='<div class="achievement"><b>'+g[3]+' '+g[0]+' '+un[un.length-1]+' '+g[2]+'</b><p class="muted">Разблокировано · бесконечная серия</p></div>'; next.forEach(function(x){html+='<div class="achievement"><b>'+g[3]+' '+g[0]+' '+x+' '+g[2]+'</b><p class="muted">Осталось: '+Math.max(0,x-g[1])+' '+g[2]+'</p></div>'})}); $('#achievements').innerHTML=html}
+function renderSettings(){renderSchedule('#configSchedule','config'); $('#configStart').value=state.config.startDate; $('#configEnd').value=state.config.endDate; $('#configSportTarget').value=state.config.sportWeeklyTarget; $('#configSelfTarget').value=state.config.selfDailyTarget; $('#themeSelect').innerHTML=themeOptions(state.theme); $('#glassOpacity').value=state.glassOpacity; $('#glassBlur').value=state.glassBlur; $('#animationLevel').value=state.animationLevel; $('#themeGrid').innerHTML=THEMES.map(function(t){return '<button class="theme-choice" data-theme-choice="'+t[0]+'" style="--c1:'+t[2]+';--c2:'+t[3]+'">'+t[1]+'</button>'}).join(''); var catOpts=state.categories.map(function(c){return '<option value="'+c.id+'">'+esc(c.icon+' '+c.name)+'</option>'}).join(''); for(var i=0;i<3;i++){var r=$('#ring'+i); if(r){r.innerHTML=catOpts; r.value=state.ringSlots[i]||state.categories[i].id}} $('#categoryList').innerHTML=state.categories.map(function(c){return '<div class="category-card"><div class="section-head tight"><div><b>'+esc(c.icon+' '+c.name)+'</b><p class="muted">'+c.type+' · цель '+(c.dailyTarget||0)+' '+c.unit+'</p></div>'+(c.id==='work'||c.id==='sport'||c.id==='self'?'':'<button class="danger compact" data-cat-del="'+c.id+'">Удалить</button>')+'</div></div>'}).join(''); $('#templateList').innerHTML=(state.templates||[]).map(function(t,i){return '<div class="template-card"><b>'+esc(t.name)+'</b><p class="muted">'+dur(t.minutes||30)+'</p><button class="danger compact" data-tpl-del="'+i+'">Удалить</button></div>'}).join('')||'<div class="plan-item muted">Своих шаблонов нет.</div>'; $('#widgetSettings').innerHTML=Object.keys(DEFAULT_WIDGETS).map(function(k){return '<label class="schedule-day"><input type="checkbox" data-widget-toggle="'+k+'" '+(state.widgets[k]!==false?'checked':'')+'> <span>'+k+'</span></label>'}).join('')}
+function renderFocus(){var cats=state.categories.map(function(c){return '<option value="'+c.id+'">'+esc(c.icon+' '+c.name)+'</option>'}).join(''); $('#focusCategory').innerHTML=cats; renderFocusClock()}
+function renderAll(){try{applyTheme(); renderTop(); renderEntryForm(); renderRings(); renderWeekly(); renderPlanner(); renderQuickTemplates(); renderTimeline(); renderInsights(); renderEvening(); renderDayEntries(); renderSport(); renderSelf(); renderHistory(); renderAnalytics(); renderSettings(); renderFocus(); $$('.widget').forEach(function(el){var w=el.getAttribute('data-widget'); if(w)el.classList.toggle('hidden',state.widgets[w]===false)})}catch(e){showError(e)}}
+function exportJSON(){download('lifeos-backup-'+todayISO()+'.json',JSON.stringify(state,null,2),'application/json')} function exportCSV(){var rows=['date,start,end,category,title,minutes,calories,note']; state.entries.forEach(function(e){rows.push([e.date,e.start,e.end,cat(e.categoryId).name,e.title,entryMins(e),e.calories||'',String(e.note||'').replace(/\n/g,' ')].map(function(x){return '"'+String(x).replace(/"/g,'""')+'"'}).join(','))}); download('lifeos-entries-'+todayISO()+'.csv',rows.join('\n'),'text/csv')}
+function exportHTML(){var html='<!doctype html><meta charset="utf-8"><title>LifeOS Report</title><style>body{font-family:-apple-system,Arial;padding:24px;background:#071020;color:white}section{background:#ffffff18;border:1px solid #ffffff22;border-radius:20px;padding:16px;margin:12px 0}</style><h1>LifeOS Report</h1><section><h2>Период</h2><p>'+state.config.startDate+' — '+state.config.endDate+'</p><p>Работа: '+dur(workFactPeriod())+' / '+dur(workPlanPeriod())+'</p><p>Спорт: '+state.entries.filter(function(e){return cat(e.categoryId).type==='sport'}).length+' тренировок</p><p>Саморазвитие: '+dur(state.entries.filter(function(e){return cat(e.categoryId).type==='self'}).reduce(function(a,e){return a+entryMins(e)},0))+'</p></section>'; download('lifeos-report-'+todayISO()+'.html',html,'text/html')}
+function download(name,content,type){var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([content],{type:type||'text/plain'})); a.download=name; a.click(); setTimeout(function(){URL.revokeObjectURL(a.href)},1000)}
+function closeDay(){state.moods[state.activeDate]={mood:$('#moodSelect').value,note:$('#dayNote').value}; state.dayClosed[state.activeDate]=true; save(); toast('День закрыт'); renderAll()}
+function clearCache(){if('serviceWorker'in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister()})})} if(window.caches){caches.keys().then(function(keys){keys.forEach(function(k){caches.delete(k)})})} toast('Кэш PWA очищен. Перезапусти приложение.')} 
+function showError(e){console.error(e); var box=document.createElement('div'); box.className='error-panel'; box.innerHTML='<h2>LifeOS поймал ошибку интерфейса</h2><p>Данные не удалены. Попробуй очистить кэш PWA или экспортировать JSON.</p><pre>'+esc(e&&e.stack?e.stack:e)+'</pre><button class="primary" onclick="location.reload()">Перезагрузить</button>'; document.body.appendChild(box)}
+function bind(){
+  $$('.nav-btn').forEach(function(b){b.addEventListener('click',function(){setTab(b.getAttribute('data-tab'))})});
+  $('#activeDate').addEventListener('change',function(){state.activeDate=this.value||todayISO(); save(); renderAll()});
+  $('#themeTop').addEventListener('change',function(){state.theme=this.value; save(); renderAll()}); $('#backupTop').addEventListener('click',exportJSON);
+  $('#completeWork').addEventListener('click',completeWork); $('#completeSport').addEventListener('click',completeSport); $('#completeSelf').addEventListener('click',completeSelf); $('#customEntry').addEventListener('click',function(){setTab('log')});
+  $('#acceptPlan').addEventListener('click',function(){toast('План принят. Отмечай пункты через быстрые кнопки.')}); $('#closeDay').addEventListener('click',closeDay);
+  $('#moodSelect').addEventListener('change',function(){var m=state.moods[state.activeDate]||{}; m.mood=this.value; m.note=$('#dayNote').value; state.moods[state.activeDate]=m; save()}); $('#dayNote').addEventListener('input',function(){var m=state.moods[state.activeDate]||{}; m.mood=$('#moodSelect').value; m.note=this.value; state.moods[state.activeDate]=m; save()});
+  $('#entryForm').addEventListener('submit',function(e){e.preventDefault(); state.entries.push({id:uid(),date:$('#entryDate').value,start:$('#entryStart').value,end:$('#entryEnd').value,categoryId:$('#entryCategory').value,title:$('#entryTitle').value,intensity:$('#entryIntensity').value,calories:Number($('#entryCalories').value||0),note:$('#entryNote').value,source:'manual'}); save(); e.target.reset(); $('#entryDate').value=state.activeDate; toast('Запись добавлена'); renderAll()});
+  document.addEventListener('click',function(e){var t=e.target.closest('[data-quick],[data-del-entry],[data-copy-entry],[data-cat-del],[data-tpl-del],[data-theme-choice]'); if(!t)return; var d=t.dataset; if(d.quick!==undefined){var base=[{name:'Работа 1ч',cat:'work',min:60,icon:'💼'},{name:'Полный день',cat:'work',full:true,icon:'✅'},{name:'Тренировка 45м',cat:'sport',min:45,icon:'🏃'},{name:'Прогулка 30м',cat:'sport',min:30,icon:'🚶'},{name:'Книга 20м',cat:'self',min:20,icon:'📖'},{name:'Курс 40м',cat:'self',min:40,icon:'🎓'},{name:'Проект 1ч',cat:'self',min:60,icon:'🛠️'},{name:'Свой вариант',cat:'other',min:30,icon:'✨'}]; var all=base.concat(state.templates||[]),q=all[Number(d.quick)]; if(q.full)completeWork(); else quickAdd(q.cat||q.categoryId,Number(q.min||q.minutes||30),q.name,'Быстрый шаблон')}
+    if(d.delEntry){state.entries=state.entries.filter(function(x){return x.id!==d.delEntry}); save(); renderAll()} if(d.copyEntry){var src=state.entries.find(function(x){return x.id===d.copyEntry}); if(src){var cp=Object.assign({},src,{id:uid(),date:state.activeDate,source:'copy'}); state.entries.push(cp); save(); renderAll()}} if(d.catDel){state.categories=state.categories.filter(function(x){return x.id!==d.catDel}); state.ringSlots=state.ringSlots.map(function(id){return id===d.catDel?'other':id}); save(); renderAll()} if(d.tplDel!==undefined){state.templates.splice(Number(d.tplDel),1); save(); renderAll()} if(d.themeChoice){state.theme=d.themeChoice; save(); renderAll()}
+  });
+  $('#copyYesterday').addEventListener('click',function(){var y=addDays(state.activeDate,-1),items=entriesFor(y); items.forEach(function(e){state.entries.push(Object.assign({},e,{id:uid(),date:state.activeDate,source:'copy-yesterday'}))}); save(); toast('Скопировано: '+items.length); renderAll()});
+  $('#selfQuickForm').addEventListener('submit',function(e){e.preventDefault(); quickAdd('self',Number($('#selfMinutes').value||30),$('#selfTitle').value||$('#selfKind').value,$('#selfKind').value); e.target.reset(); $('#selfMinutes').value=30});
+  $('#configForm').addEventListener('submit',function(e){e.preventDefault(); state.config.startDate=$('#configStart').value; state.config.endDate=$('#configEnd').value; state.config.sportWeeklyTarget=Number($('#configSportTarget').value||3); state.config.selfDailyTarget=Number($('#configSelfTarget').value||60); state.config.schedule=readSchedule('config'); cat('self').dailyTarget=state.config.selfDailyTarget; cat('self').weeklyTarget=state.config.selfDailyTarget*7; cat('sport').weeklyTarget=state.config.sportWeeklyTarget; state.configured=true; save(); toast('График сохранён'); renderAll()});
+  $('#configDefault').addEventListener('click',function(){state.config={startDate:'2026-07-03',endDate:'2026-08-31',sportWeeklyTarget:3,selfDailyTarget:60,schedule:clone(DEFAULT_SCHEDULE)}; save(); renderAll()});
+  $('#visualForm').addEventListener('submit',function(e){e.preventDefault(); state.theme=$('#themeSelect').value; state.glassOpacity=Number($('#glassOpacity').value); state.glassBlur=Number($('#glassBlur').value); state.animationLevel=$('#animationLevel').value; save(); toast('Визуал сохранён'); renderAll()}); ['glassOpacity','glassBlur','animationLevel','themeSelect'].forEach(function(id){var el=$('#'+id); if(el)el.addEventListener('input',function(){if(id==='themeSelect')state.theme=this.value; else if(id==='animationLevel')state.animationLevel=this.value; else state[id]=Number(this.value); applyTheme()})});
+  $('#categoryForm').addEventListener('submit',function(e){e.preventDefault(); var name=$('#catName').value||'Своя категория',type=$('#catType').value,id='cat-'+uid(); state.categories.push({id:id,name:name,type:type,icon:$('#catIcon').value||'✨',color:$('#catColor').value||'#7c5cff',dailyTarget:Number($('#catDaily').value||0),weeklyTarget:Number($('#catDaily').value||0)*7,unit:type==='sport'?'трен.':'мин'}); save(); e.target.reset(); $('#catColor').value='#7c5cff'; renderAll()});
+  $('#ringsForm').addEventListener('submit',function(e){e.preventDefault(); state.ringSlots=[$('#ring0').value,$('#ring1').value,$('#ring2').value]; save(); toast('Кольца обновлены'); renderAll()});
+  $('#templateForm').addEventListener('submit',function(e){e.preventDefault(); var c=cat($('#tplCategory').value); state.templates.push({name:$('#tplName').value||'Свой шаблон',cat:c.id,minutes:Number($('#tplMinutes').value||30),icon:c.icon}); save(); e.target.reset(); renderAll()});
+  $('#widgetSettings').addEventListener('change',function(e){if(e.target.getAttribute('data-widget-toggle')){state.widgets[e.target.getAttribute('data-widget-toggle')]=e.target.checked; save(); renderAll()}});
+  $('#exportJson').addEventListener('click',exportJSON); $('#exportCsv').addEventListener('click',exportCSV); $('#exportHtml').addEventListener('click',exportHTML); $('#clearCache').addEventListener('click',clearCache); $('#resetAll').addEventListener('click',function(){if(confirm('Удалить все данные LifeOS?')){store.removeItem(KEY); OLD_KEYS.forEach(function(k){try{store.removeItem(k)}catch(e){}}); state=defaults(); save(); location.reload()}});
+  $('#importJsonLabel').addEventListener('click',function(){$('#importJson').click()}); $('#importJson').addEventListener('change',function(e){var f=e.target.files[0]; if(!f)return; var r=new FileReader(); r.onload=function(){try{state=normalize(JSON.parse(r.result)); save(); toast('Импорт выполнен'); renderAll()}catch(err){toast('Не удалось импортировать JSON')}}; r.readAsText(f)});
+  $('#setupDefault').addEventListener('click',function(){state.config={startDate:'2026-07-03',endDate:'2026-08-31',sportWeeklyTarget:3,selfDailyTarget:60,schedule:clone(DEFAULT_SCHEDULE)}; $('#setupStart').value=state.config.startDate; $('#setupEnd').value=state.config.endDate; $('#setupSportTarget').value=3; $('#setupSelfTarget').value=60; renderSchedule('#setupSchedule','setup')});
+  $('#setupForm').addEventListener('submit',function(e){e.preventDefault(); state.config.startDate=$('#setupStart').value; state.config.endDate=$('#setupEnd').value; state.config.sportWeeklyTarget=Number($('#setupSportTarget').value||3); state.config.selfDailyTarget=Number($('#setupSelfTarget').value||60); state.config.schedule=readSchedule('setup'); state.configured=true; cat('self').dailyTarget=state.config.selfDailyTarget; cat('self').weeklyTarget=state.config.selfDailyTarget*7; cat('sport').weeklyTarget=state.config.sportWeeklyTarget; save(); $('#setup').classList.add('hidden'); toast('LifeOS запущен'); renderAll()});
+  $('#focusModes').innerHTML=FOCUS_MODES.map(function(m,i){return '<button class="soft mode-btn '+(i===0?'active':'')+'" data-mode="'+m.id+'">'+m.label+'</button>'}).join(''); $('#focusModes').addEventListener('click',function(e){var b=e.target.closest('[data-mode]'); if(!b)return; for(var i=0;i<FOCUS_MODES.length;i++)if(FOCUS_MODES[i].id===b.dataset.mode)focus.mode=FOCUS_MODES[i]; focus.remaining=focus.mode.minutes*60; $$('.mode-btn').forEach(function(x){x.classList.toggle('active',x===b)}); renderFocusClock()});
+  $('#focusStart').addEventListener('click',function(){if(focus.running)return; focus.running=true; focus.interval=setInterval(function(){focus.remaining--; if(focus.remaining<=0)finishFocus(); renderFocusClock()},1000)}); $('#focusPause').addEventListener('click',function(){focus.running=false; clearInterval(focus.interval)}); $('#focusStop').addEventListener('click',finishFocus);
+  if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(function(){}); var deferred=null; window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferred=e; $('#installBtn').hidden=false}); $('#installBtn').addEventListener('click',function(){if(deferred){deferred.prompt();deferred=null;this.hidden=true}})
+}
+function renderFocusClock(){var el=$('#focusClock'); if(el)el.textContent=pad(Math.floor(focus.remaining/60))+':'+pad(focus.remaining%60)} function finishFocus(){if(focus.interval)clearInterval(focus.interval); if(focus.running||focus.remaining<focus.mode.minutes*60){var done=Math.max(1,Math.round((focus.mode.minutes*60-focus.remaining)/60)); quickAdd($('#focusCategory').value||'self',done,$('#focusTitle').value||'Фокус-сессия','Автозапись из фокус-таймера')} focus.running=false; focus.remaining=focus.mode.minutes*60; renderFocusClock()}
+function init(){try{state=load(); applyTheme(); bind(); $('#activeDate').value=state.activeDate; $('#entryDate').value=state.activeDate; $('#setupStart').value=state.config.startDate; $('#setupEnd').value=state.config.endDate; $('#setupSportTarget').value=state.config.sportWeeklyTarget; $('#setupSelfTarget').value=state.config.selfDailyTarget; renderSchedule('#setupSchedule','setup'); if(!state.configured)$('#setup').classList.remove('hidden'); renderFocusClock(); renderAll()}catch(e){showError(e)}}
+window.addEventListener('error',function(e){showError(e.error||e.message)}); document.addEventListener('DOMContentLoaded',init);
+})();
+</script></body></html>
