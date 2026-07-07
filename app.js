@@ -3,7 +3,7 @@
 
   const APP_VERSION = '16.0.0-profiles-reports';
   const DATA_VERSION = 16;
-  const KEY = 'lifeos.v16.profiles.reports';
+  const KEY = 'lifeos.v16.profiles.reports.hotfix1';
   const LEGACY_KEYS = ['lifeos.v15.modules','lifeos.v14.active','lifeos.v13.today','lifeos.v12.stability','lifeos.v11.v8base.complete','lifeos.v10.stable','lifeos.v9.complete','lifeos.v8.rings','lifeos.v7.design', 'lifeos.v5.configurable', 'lifeos.v4.final', 'lifeos.v3', 'lifeosData', 'lifeos-pwa-data'];
   const DEFAULT_START = '2026-07-03';
   const DEFAULT_END = '2026-08-31';
@@ -2076,6 +2076,13 @@
       ['work', '💼 Работа'], ['sport', '🏋️ Спорт'], ['self', '✦ Саморазвитие'],
       ...customCategories().filter((cat) => cat.inRings !== false).map((cat) => [cat.id, `${cat.icon || '✨'} ${cat.name}`])
     ];
+  }
+
+  function ringLabel(slot) {
+    const fallback = { work: '💼 Работа', sport: '🏋️ Спорт', self: '✦ Саморазвитие' };
+    if (!slot) return fallback.work;
+    const found = ringOptionList().find(([value]) => value === slot);
+    return found ? found[1] : (fallback[slot] || '✨ Своя цель');
   }
 
   function renderEnhancementSettings() {
